@@ -13,7 +13,6 @@ object frmMain: TfrmMain
   OldCreateOrder = False
   Position = poDefaultPosOnly
   OnClose = FormClose
-  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13

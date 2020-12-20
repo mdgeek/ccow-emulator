@@ -3,8 +3,7 @@ unit MainWindow;
 interface
 
 uses
-  SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls,
-  ContextManagerService, CCOW_TLB;
+  SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, ContextManagerService;
 
 type
   TfrmMain = class(TForm)
@@ -23,11 +22,8 @@ type
     splitterTop: TSplitter;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCreate(Sender: TObject);
-    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 
   private
-    contextManager: IContextManager;
-
     procedure SetCurrentContext(context: PContext);
     procedure SetPendingContext(context: PContext);
     procedure SetContextItems(memo: TMemo; context: PContext);
@@ -40,7 +36,8 @@ type
     procedure AddParticipant(participant: PParticipant);
     procedure RemoveParticipant(participant: PParticipant);
 
-    procedure Log(text: String);
+    procedure Log(text: String); overload;
+    procedure Log(text: String; params: array of const); overload;
   end;
 
 var
@@ -53,6 +50,11 @@ implementation
 procedure TfrmMain.Log(text: String);
 begin
   memoActivityLog.Lines.Add(text);
+end;
+
+procedure TfrmMain.Log(text: String; params: array of const );
+begin
+  Log(Format(text, params));
 end;
 
 procedure TfrmMain.AddParticipant(participant: PParticipant);
@@ -107,12 +109,6 @@ end;
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
   Service := TContextManagerService.Create;
-  contextManager := CoContextManager.Create;
-end;
-
-procedure TfrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
-begin
-  contextManager := nil;
 end;
 
 end.

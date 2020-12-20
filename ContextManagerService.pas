@@ -40,25 +40,26 @@ type
 
   TContextManagerService = class
   private
+    contextManager: IContextManager;
 
     participants: TList;
-    nextParticipantCoupon: Integer;
+    nextparticipantCoupon: Integer;
 
     currentContext: PContext;
     pendingContext: PContext;
-    nextContextCoupon: Integer;
+    nextcontextCoupon: Integer;
 
     changed: TObject;
 
     function FindParticipant(participantCoupon: Integer): PParticipant;
     procedure NotifyParticipants(canceled: Boolean);
     function PollParticipants: TStrings;
-    procedure TerminateAll;
+    procedure TerminateAllParticipants;
 
     function CreateContext(participantCoupon: Integer): PContext;
     procedure DestroyContext(context: PContext);
     function GetContext(contextCoupon: Integer): PContext;
-    function GetCurrentContextCoupon: Integer;
+    function GetCurrentcontextCoupon: Integer;
     procedure ValidatePendingContext(contextCoupon: Integer; participantCoupon: Integer);
 
     function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
@@ -80,7 +81,6 @@ type
 
     procedure NotImplemented(message: String);
 
-    procedure Log(text: String); overload;
     procedure LogException(e: Exception);
     procedure LogInvocation(method: String);
 
@@ -89,7 +89,7 @@ type
     procedure DestroyParticipant(participantCoupon: Integer);
     procedure SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
 
-    property CurrentContextCoupon: Integer read GetCurrentContextCoupon;
+    property CurrentcontextCoupon: Integer read GetCurrentContextCoupon;
     function StartContextChanges(participantCoupon: Integer): Integer;
     function EndContextChanges(contextCoupon: Integer): OleVariant;
     procedure PublishChangesDecision(contextCoupon: Integer; decision: WideString);
@@ -115,7 +115,7 @@ const
   E_TRANSACTION_IN_PROGRESS = HRESULT($80000209);
   E_NOT_IN_TRANSACTION = HRESULT($80000207);
   E_INVALID_TRANSACTION = HRESULT($80000211);
-  E_INVALID_CONTEXT_COUPON = HRESULT($80000203);
+  E_INVALID_Integer = HRESULT($80000203);
   E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
 
@@ -130,12 +130,14 @@ begin
   pendingContext := nil;
 
   changed := TObject.Create;
+  contextManager := CoContextManager.Create;
 end;
 
 procedure TContextManagerService.Shutdown;
 begin
   LogInvocation('Shutdown');
-  TerminateAll;
+  TerminateAllParticipants;
+  contextManager := nil;
 end;
 
 //************* Participant *************//
@@ -215,7 +217,7 @@ begin
   then action := 'canceled'
   else action := 'committed';
 
-  Log('Context change ' + action + ', notifying participants...');
+  frmMain.Log('Context change %s, notifying participants...', [action]);
   count := 0;
   contextCoupon := pendingContext^.contextCoupon;
 
@@ -234,8 +236,7 @@ begin
     end;
   end;
 
-  Log('Notified ' + IntToStr(count) + ' out of '
-    + IntToStr(participants.Count) + 'participant(s)');
+  frmMain.Log('Notified %d out of %d participant(s)', [count, participants.Count]);
 end;
 
 function TContextManagerService.PollParticipants: TStrings;
@@ -248,7 +249,7 @@ var
   response: WideString;
   decision: TSurveyDecision;
 begin
-  Log('Polling participants...');
+  frmMain.Log('Polling participants...');
   Result := nil;
   count := 0;
 
@@ -283,22 +284,22 @@ begin
     end;
   end;
 
-  Log('Polled ' + IntToStr(count) + ' out of '
-    + IntToStr(participants.Count) + ' participant(s)');
+  frmMain.Log('Polled %d out of %d participant(s)', [count, participants.Count]);
 end;
 
-procedure TContextManagerService.TerminateAll;
+procedure TContextManagerService.TerminateAllParticipants;
 var
   i: Integer;
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
-  Log('Terminating all active participants...');
+  frmMain.Log('Terminating all active participants...');
 
   for i := 0 to participants.Count - 1 do
   begin
     participant := participants[i];
     contextParticipant := participant^.contextParticipant;
+    frmMain.RemoveParticipant(participant);
     participant^.contextParticipant := nil;
 
     Try
@@ -346,10 +347,10 @@ begin
   then Result := currentContext
   else if (pendingContext <> nil) and (pendingContext^.contextCoupon = contextCoupon)
   then Result := pendingContext
-  else Throw('Context coupon does not correspond to an active or pending context', E_INVALID_CONTEXT_COUPON);
+  else Throw('Context coupon does not correspond to an active or pending context', E_INVALID_Integer);
 end;
 
-function TContextManagerService.GetCurrentContextCoupon: Integer;
+function TContextManagerService.GetCurrentcontextCoupon: Integer;
 begin
   if currentContext = nil
   then Result := 0
@@ -495,7 +496,7 @@ begin
     Exit;
   end;
 
-  Log('Returning: ' + items.CommaText);
+  frmMain.Log('Returning: %s', [items.CommaText]);
 
   upper := items.Count;
 
@@ -579,49 +580,43 @@ begin
 
   if contextCoupon <> pendingContext^.contextCoupon
   then Throw('An invalid context coupon (' + IntToStr(contextCoupon)
-    + ') was provided', E_INVALID_CONTEXT_COUPON);
+    + ') was provided', E_INVALID_Integer);
 
   if (participantCoupon >= 0) and (pendingContext^.participantCoupon <> participantCoupon)
   then Throw('Participant (' + IntToStr(participantCoupon)
     + ') did not initiate this transaction (' + IntToStr(contextCoupon) + ')',
-    E_INVALID_CONTEXT_COUPON);
+    E_INVALID_Integer);
 end;
 
 //************* Logging *************//
-
-procedure TContextManagerService.Log(text: String);
-begin
-  frmMain.Log(text);
-end;
 
 procedure TContextManagerService.LogActivity(participant: PParticipant; Activity: String);
 begin
   if (participant <> nil)
   then begin
-    Log(participant^.title + '('
-      + IntToStr(participant^.participantCoupon) + ') ' + Activity);
+    frmMain.Log('%s(%d) %s', [participant^.title, participant^.participantCoupon, Activity]);
   end;
 end;
 
-procedure TContextManagerService.LogActivity(ParticipantCoupon: Integer; Activity: String);
+procedure TContextManagerService.LogActivity(participantCoupon: Integer; Activity: String);
 begin
   LogActivity(FindParticipant(ParticipantCoupon), Activity);
 end;
 
-procedure TContextManagerService.LogTransaction(ContextCoupon: Integer; Activity: String);
+procedure TContextManagerService.LogTransaction(contextCoupon: Integer; activity: String);
 begin
-  Log('Transaction (' + IntToStr(ContextCoupon) + ') ' + Activity);
+  frmMain.Log('Transaction (%d) %s', [contextCoupon, activity]);
 end;
 
 procedure TContextManagerService.LogInvocation(method: String);
 begin
-  Log('------------------------------');
-  Log('Invoking method ' + method);
+  frmMain.Log('------------------------------');
+  frmMain.Log('Invoking method %s', [method]);
 end;
 
 procedure TContextManagerService.LogException(e: Exception);
 begin
-  Log('An error occured: ' + e.Message);
+  frmMain.Log('An error occured: %s', [e.Message]);
 end;
 
 //************* Exception Handling *************//

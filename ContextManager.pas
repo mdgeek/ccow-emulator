@@ -5,7 +5,7 @@ unit ContextManager;
 interface
 
 uses
-  ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl;
+  ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl, ContextManagerService;
 
 type
   TContextManager = class(TAutoObject, IContextManager, IContextData, IContextAction, ISecureBinding, ISecureContextData, IContextFilter)
@@ -22,7 +22,7 @@ type
       var someBusy: WordBool): OleVariant; safecall;
 
     function IContextManager.Get_MostRecentContextCoupon = IContextManager_Get_MostRecentContextCoupon;
-    function IContextManager_Get_MostRecentContextCoupon: Integer; safecall;
+    function IContextManager_Get_MostRecentcontextCoupon: Integer; safecall;
 
     function IContextManager.JoinCommonContext = IContextManager_JoinCommonContext;
     function IContextManager_JoinCommonContext(const contextParticipant: IDispatch;
@@ -41,8 +41,7 @@ type
       const decision: WideString); safecall;
 
     procedure IContextManager.ResumeParticipation = IContextManager_ResumeParticipation;
-    procedure IContextManager_ResumeParticipation(participantCoupon: Integer; wait: WordBool);
-      safecall;
+    procedure IContextManager_ResumeParticipation(participantCoupon: Integer; wait: WordBool); safecall;
 
     procedure IContextManager.SuspendParticipation = IContextManager_SuspendParticipation;
     procedure IContextManager_SuspendParticipation(participantCoupon: Integer); safecall;
@@ -70,12 +69,10 @@ type
     //************* ISecureBinding *************//
 
     function ISecureBinding.FinalizeBinding = ISecureBinding_FinalizeBinding;
-    function ISecureBinding_FinalizeBinding(bindeeCoupon: Integer; const bindeePublicKey,
-      mac: WideString): OleVariant; safecall;
+    function ISecureBinding_FinalizeBinding(bindeeCoupon: Integer; const bindeePublicKey, mac: WideString): OleVariant; safecall;
 
     function ISecureBinding.InitializeBinding = ISecureBinding_InitializeBinding;
-    function ISecureBinding_InitializeBinding(bindeeCoupon: Integer; propertyNames,
-      propertyValues: OleVariant;
+    function ISecureBinding_InitializeBinding(bindeeCoupon: Integer; propertyNames, propertyValues: OleVariant;
       var binderPublicKey: WideString): WideString; safecall;
 
     //************* ISecureContextData *************//
@@ -86,8 +83,7 @@ type
     function ISecureContextData.GetItemValues = ISecureContextData_GetItemValues;
     function ISecureContextData_GetItemValues(participantCoupon: Integer;
       names: OleVariant; onlyChanges: WordBool; contextCoupon: Integer;
-      const appSignature: WideString;
-      var managerSignature: WideString): OleVariant; safecall;
+      const appSignature: WideString; var managerSignature: WideString): OleVariant; safecall;
 
     procedure ISecureContextData.SetItemValues = ISecureContextData_SetItemValues;
     procedure ISecureContextData_SetItemValues(participantCoupon: Integer;
@@ -97,29 +93,27 @@ type
     //************* IContextAction *************//
 
     function IContextAction.Perform = IContextAction_Perform;
-    function IContextAction_Perform(participantCoupon: Integer; itemNames,
-      itemValues: OleVariant; const appSignature: WideString;
+    function IContextAction_Perform(participantCoupon: Integer;
+      itemNames, itemValues: OleVariant; const appSignature: WideString;
       var actionCoupon: Integer; var outItemNames,
       outItemValues: OleVariant): WideString; safecall;
 
     //************* IContextFilter *************//
 
     function IContextFilter.GetSubjectsOfInterest = IContextFilter_GetSubjectsOfInterest;
-    function IContextFilter_GetSubjectsOfInterest(participantCoupon: Integer):
-      OleVariant; safecall;
+    function IContextFilter_GetSubjectsOfInterest(participantCoupon: Integer): OleVariant; safecall;
 
     procedure IContextFilter.ClearFilter = IContextFilter_ClearFilter;
     procedure IContextFilter_ClearFilter(participantCoupon: Integer); safecall;
 
     procedure IContextFilter.SetSubjectsOfInterest = IContextFilter_SetSubjectsOfInterest;
-    procedure IContextFilter_SetSubjectsOfInterest(participantCoupon: Integer;
-      subjectNames: OleVariant); safecall;
+    procedure IContextFilter_SetSubjectsOfInterest(participantCoupon: Integer; subjectNames: OleVariant); safecall;
 
   end;
 
 implementation
 
-uses ComServ, ContextManagerService;
+uses ComServ, MainWindow;
 
 function TContextManager.SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT;
 begin
@@ -161,15 +155,14 @@ begin
   Service.SuspendParticipant(participantCoupon, True);
 end;
 
-function TContextManager.IContextManager_Get_MostRecentContextCoupon: Integer;
+function TContextManager.IContextManager_Get_MostRecentcontextCoupon: Integer;
 begin
   Service.LogInvocation('IContextManager.Get_MostRecentContextCoupon');
   Result := Service.CurrentContextCoupon;
-  Service.Log('Returned: ' + IntToStr(Result));
+  frmMain.Log('Returned: ' + IntToStr(Result));
 end;
 
-function TContextManager.IContextManager_StartContextChanges(
-  participantCoupon: Integer): Integer;
+function TContextManager.IContextManager_StartContextChanges(participantCoupon: Integer): Integer;
 begin
   Service.LogInvocation('IContextManager.StartContextChanges');
   Result := Service.StartContextChanges(participantCoupon);
@@ -221,8 +214,7 @@ procedure TContextManager.IContextData_SetItemValues(participantCoupon: Integer;
   itemNames, itemValues: OleVariant; contextCoupon: Integer);
 begin
   Service.LogInvocation('IContextData.SetItemValues');
-  Service.SetItemValues(participantCoupon,
-    itemNames, itemValues, contextCoupon);
+  Service.SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
 end;
 
 //************* ISecureContextData *************//
@@ -231,7 +223,7 @@ function TContextManager.ISecureContextData_GetItemNames(
   contextCoupon: Integer): OleVariant;
 begin
   Service.LogInvocation('ISecureContextData.GetItemNames');
-  Service.Log('Delegating to IContextData.GetItemNames');
+  frmMain.Log('Delegating to IContextData.GetItemNames');
   Result := IContextData_GetItemNames(contextCoupon);
 end;
 
@@ -241,7 +233,7 @@ function TContextManager.ISecureContextData_GetItemValues(
   var managerSignature: WideString): OleVariant;
 begin
   Service.LogInvocation('ISecureContextData.GetItemValues');
-  Service.Log('Delegating to IContextData.GetItemValues');
+  frmMain.Log('Delegating to IContextData.GetItemValues');
   Result := IContextData_GetItemValues(names, onlyChanges, contextCoupon);
 end;
 
@@ -250,7 +242,7 @@ procedure TContextManager.ISecureContextData_SetItemValues(
   contextCoupon: Integer; const appSignature: WideString);
 begin
   Service.LogInvocation('ISecureContextData.SetItemValues');
-  Service.Log('Delegating to IContextData.SetItemValues');
+  frmMain.Log('Delegating to IContextData.SetItemValues');
   IContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
 end;
 
