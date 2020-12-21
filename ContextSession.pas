@@ -33,7 +33,6 @@ type
 
     changed: TObject;
 
-    function FindParticipant(participantCoupon: Integer): PParticipant;
     procedure NotifyParticipants(canceled: Boolean);
     function PollParticipants: TStrings;
     procedure TerminateAllParticipants;
@@ -65,10 +64,13 @@ type
     procedure LogException(e: Exception);
     procedure LogInvocation(method: String);
 
+    function FindParticipant(participantCoupon: Integer): PParticipant;
     function CreateParticipant(contextParticipant: IDispatch;
       title: WideString; survey, wait: WordBool): Integer;
     procedure DestroyParticipant(participantCoupon: Integer);
     procedure SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
+    procedure AddParticipant(participant: PParticipant);
+    function RemoveParticipant(participantCoupon: Integer): PParticipant;
 
     property CurrentContextCoupon: Integer read GetCurrentContextCoupon;
     function StartContextChanges(participantCoupon: Integer): Integer;
@@ -137,8 +139,7 @@ end;
 //************************** Participant **************************/
 
 function TContextSession.CreateParticipant(
-  contextParticipant: IDispatch; title: WideString;
-  survey, wait: WordBool): Integer;
+  contextParticipant: IDispatch; title: WideString; survey, wait: WordBool): Integer;
 var
   participant: PParticipant;
 begin
@@ -279,6 +280,20 @@ begin
   end;
 
   sessionForm.Log('Polled %d out of %d participant(s)', [count, participants.Count]);
+end;
+
+procedure TContextSession.AddParticipant(participant: PParticipant);
+begin
+  participants.Add(participant);
+end;
+
+function TContextSession.RemoveParticipant(participantCoupon: Integer): PParticipant;
+var
+  participant: PParticipant;
+begin
+  participant := FindParticipant(participantCoupon);
+  participants.Remove(participant);
+  Result := participant;
 end;
 
 procedure TContextSession.TerminateAllParticipants;

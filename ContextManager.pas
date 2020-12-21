@@ -117,18 +117,24 @@ type
 
     procedure IContextSession.Activate = IContextSession_Activate;
     procedure IContextSession_Activate(participantCoupon: Integer;
-      const cmToActivate: IDispatch; const nonce,
-      appSignature: WideString); safecall;
+      const cmToActivate: IDispatch; const nonce, appSignature: WideString); safecall;
 
 
   public
+    procedure Initialize; override;
     function SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT; override;
 
   end;
 
 implementation
 
-uses ComServ;
+uses ComServ, Common, Variants;
+
+procedure TContextManager.Initialize;
+begin
+  inherited;
+  session := DefaultSession;
+end;
 
 function TContextManager.SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT;
 begin
@@ -288,22 +294,31 @@ end;
 
 function TContextManager.IContextFilter_GetSubjectsOfInterest(
   participantCoupon: Integer): OleVariant;
+var
+  participant: PParticipant;
 begin
   session.LogInvocation('IContextFilter.GetSubjectsOfInterest');
-
+  participant := session.FindParticipant(participantCoupon);
+  Result := participant^.filter;
 end;
 
 procedure TContextManager.IContextFilter_ClearFilter(participantCoupon: Integer);
+var
+  participant: PParticipant;
 begin
   session.LogInvocation('IContextFilter.ClearFilter');
-
+  participant := session.FindParticipant(participantCoupon);
+  participant^.filter := Null;
 end;
 
 procedure TContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon: Integer;
   subjectNames: OleVariant);
+var
+  participant: PParticipant;
 begin
   session.LogInvocation('IContextFilter.SetSubjectsOfInterest');
-
+  participant := session.FindParticipant(participantCoupon);
+  participant^.filter := subjectNames;
 end;
 
 //************************** IContextSession **************************/
@@ -321,9 +336,14 @@ end;
 procedure TContextManager.IContextSession_Activate(
   participantCoupon: Integer; const cmToActivate: IDispatch; const nonce,
   appSignature: WideString);
+var
+  newSession: TContextSession;
+  participant: PParticipant;
 begin
   session.LogInvocation('IContextSession.Activate');
-
+  newSession := TContextManager(cmToActivate).session;
+  participant := session.RemoveParticipant(participantCoupon);
+  newSession.AddParticipant(participant);
 end;
 
 initialization

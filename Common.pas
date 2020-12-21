@@ -15,6 +15,7 @@ type
     survey: WordBool;
     wait: WordBool;
     suspended: WordBool;
+    filter: OleVariant;
   end;
 
   PContext = ^TContext;
