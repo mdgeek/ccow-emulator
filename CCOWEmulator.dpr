@@ -2,10 +2,12 @@ program CCOWEmulator;
 
 uses
   Forms,
-  MainWindow in 'MainWindow.pas' {frmMain},
+  SessionForm in 'SessionForm.pas',
   CCOW_TLB in 'CCOW_TLB.pas',
   ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
-  ContextManagerService in 'ContextManagerService.pas';
+  ContextSession in 'ContextSession.pas',
+  Common in 'Common.pas',
+  MainForm in 'MainForm.pas' {frmMain};
 
 {$R *.TLB}
 
@@ -15,5 +17,6 @@ begin
   Application.Initialize;
   Application.Title := 'CCOW Emulator';
   Application.CreateForm(TfrmMain, frmMain);
+  DefaultSession := TContextSession.Create;
   Application.Run;
 end.

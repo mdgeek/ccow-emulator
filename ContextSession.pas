@@ -1,30 +1,11 @@
-unit ContextManagerService;
+unit ContextSession;
 
 interface
 
 uses
-  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows;
+  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows, SessionForm, Common;
 
 type
-  PParticipant = ^TParticipant;
-
-  TParticipant = record
-    contextParticipant: IContextParticipant;
-    participantCoupon: Integer;
-    title: WideString;
-    survey: WordBool;
-    wait: WordBool;
-    suspended: WordBool;
-  end;
-
-  PContext = ^TContext;
-
-  TContext = record
-    participantCoupon: Integer;
-    contextCoupon: Integer;
-    contextItems: TStrings;
-  end;
-
   TSurveyDecision = (Decision_Accept, Decision_ConditionallyAccept, Decision_Unknown);
 
   TListComponent = (ValueComponent, NameComponent, BothComponents, RawText);
@@ -38,9 +19,10 @@ type
     property Code: HRESULT read FCode;
   end;
 
-  TContextManagerService = class
+  TContextSession = class
   private
-    contextManager: IContextManager;
+    sessionId: Integer;
+    sessionForm: TSessionForm;
 
     participants: TList;
     nextparticipantCoupon: Integer;
@@ -69,16 +51,14 @@ type
     procedure ClearChanged(items: TStrings);
     function ExtractItems(src: TStrings; itemName: String; onlyChanged: Boolean): TStrings;
 
-    procedure LogActivity(participant: PParticipant; activity: String); overload;
-    procedure LogActivity(participantCoupon: Integer; activity: String); overload;
-    procedure LogTransaction(contextCoupon: Integer; activity: String);
-
     procedure Throw(text: String; code: HRESULT);
+
+    procedure SessionDestroy(Sender: TObject);
 
   public
     constructor Create;
 
-    procedure Shutdown;
+    property id: Integer read sessionId;
 
     procedure NotImplemented(message: String);
 
@@ -90,25 +70,32 @@ type
     procedure DestroyParticipant(participantCoupon: Integer);
     procedure SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
 
-    property CurrentcontextCoupon: Integer read GetCurrentContextCoupon;
+    property CurrentContextCoupon: Integer read GetCurrentContextCoupon;
     function StartContextChanges(participantCoupon: Integer): Integer;
     function EndContextChanges(contextCoupon: Integer): OleVariant;
     procedure PublishChangesDecision(contextCoupon: Integer; decision: WideString);
     procedure UndoContextChanges(contextCoupon: Integer);
+
     function GetItemNames(contextCoupon: Integer): OleVariant;
     function GetItemValues(participantCoupon: Integer; itemNames: OleVariant; onlyChanges: WordBool;
       contextCoupon: Integer): OleVariant;
     procedure SetItemValues(participantCoupon: Integer;
       itemNames, itemValues: OleVariant; contextCoupon: Integer);
+
+    procedure Log(text: String); overload;
+    procedure Log(text: String; params: array of const); overload;
+    procedure LogActivity(participant: PParticipant; activity: String); overload;
+    procedure LogActivity(participantCoupon: Integer; activity: String); overload;
+    procedure LogTransaction(contextCoupon: Integer; activity: String);
+
   end;
 
 var
-
-  Service: TContextManagerService;
+  DefaultSession: TContextSession;
 
 implementation
 
-uses MainWindow;
+uses MainForm;
 
 const
   E_FAIL = HRESULT($80004005);
@@ -121,32 +108,35 @@ const
 
 var
   LOG_SEPARATOR: String;
+  nextSessionId: Integer;
 
 //************************** Lifecycle **************************/
 
-constructor TContextManagerService.Create;
+constructor TContextSession.Create;
 begin
+  nextSessionId := nextSessionId + 1;
+  sessionId := nextSessionId;
+  sessionForm := frmMain.CreateSession(sessionId);
+  sessionForm.OnDestroy := Self.SessionDestroy;
   LOG_SEPARATOR := StringOfChar('-', 80) + '> %d';
-  LogInvocation('TContextManagerService.Create');
+  LogInvocation('TContextSession.Create');
   participants := TList.Create;
 
   currentContext := nil;
   pendingContext := nil;
 
   changed := TObject.Create;
-  contextManager := CoContextManager.Create;
 end;
 
-procedure TContextManagerService.Shutdown;
+procedure TContextSession.SessionDestroy(Sender: TObject);
 begin
-  LogInvocation('TContextManagerService.Shutdown');
+  LogInvocation('TContextSession.SessionDestroy');
   TerminateAllParticipants;
-  contextManager := nil;
 end;
 
 //************************** Participant **************************/
 
-function TContextManagerService.CreateParticipant(
+function TContextSession.CreateParticipant(
   contextParticipant: IDispatch; title: WideString;
   survey, wait: WordBool): Integer;
 var
@@ -161,23 +151,23 @@ begin
   participant^.suspended := False;
   participant^.participantCoupon := nextParticipantCoupon;
   participants.add(participant);
-  frmMain.AddParticipant(participant);
+  sessionForm.AddParticipant(participant);
   LogActivity(participant, 'joined the common context');
   Result := nextParticipantCoupon;
 end;
 
-procedure TContextManagerService.DestroyParticipant(participantCoupon: Integer);
+procedure TContextSession.DestroyParticipant(participantCoupon: Integer);
 var
   participant: PParticipant;
 begin
   participant := FindParticipant(participantCoupon);
   LogActivity(participant, 'left the common context');
-  frmMain.RemoveParticipant(participant);
+  sessionForm.RemoveParticipant(participant);
   participant^.contextParticipant := nil;
   participants.Remove(participant);
 end;
 
-procedure TContextManagerService.SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
+procedure TContextSession.SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
 var
   participant: PParticipant;
 begin
@@ -185,7 +175,7 @@ begin
   participant^.suspended := suspend;
 end;
 
-function TContextManagerService.FindParticipant(participantCoupon: Integer): PParticipant;
+function TContextSession.FindParticipant(participantCoupon: Integer): PParticipant;
 var
   i: Integer;
   participant: PParticipant;
@@ -208,7 +198,7 @@ begin
     E_UNKNOWN_PARTICIPANT);
 end;
 
-procedure TContextManagerService.NotifyParticipants(canceled: Boolean);
+procedure TContextSession.NotifyParticipants(canceled: Boolean);
 var
   i: Integer;
   count: Integer;
@@ -221,7 +211,7 @@ begin
   then action := 'canceled'
   else action := 'committed';
 
-  frmMain.Log('Context change %s, notifying participants...', [action]);
+  sessionForm.Log('Context change %s, notifying participants...', [action]);
   count := 0;
   contextCoupon := pendingContext^.contextCoupon;
 
@@ -240,10 +230,10 @@ begin
     end;
   end;
 
-  frmMain.Log('Notified %d out of %d participant(s)', [count, participants.Count]);
+  sessionForm.Log('Notified %d out of %d participant(s)', [count, participants.Count]);
 end;
 
-function TContextManagerService.PollParticipants: TStrings;
+function TContextSession.PollParticipants: TStrings;
 var
   i: Integer;
   count: Integer;
@@ -253,7 +243,7 @@ var
   response: WideString;
   decision: TSurveyDecision;
 begin
-  frmMain.Log('Polling participants...');
+  sessionForm.Log('Polling participants...');
   Result := nil;
   count := 0;
 
@@ -288,22 +278,22 @@ begin
     end;
   end;
 
-  frmMain.Log('Polled %d out of %d participant(s)', [count, participants.Count]);
+  sessionForm.Log('Polled %d out of %d participant(s)', [count, participants.Count]);
 end;
 
-procedure TContextManagerService.TerminateAllParticipants;
+procedure TContextSession.TerminateAllParticipants;
 var
   i: Integer;
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
-  frmMain.Log('Terminating all active participants...');
+  sessionForm.Log('Terminating all active participants...');
 
   for i := 0 to participants.Count - 1 do
   begin
     participant := participants[i];
     contextParticipant := participant^.contextParticipant;
-    frmMain.RemoveParticipant(participant);
+    sessionForm.RemoveParticipant(participant);
     participant^.contextParticipant := nil;
 
     Try
@@ -320,7 +310,7 @@ end;
 
 //************************** Context **************************/
 
-function TContextManagerService.CreateContext(participantCoupon: Integer): PContext;
+function TContextSession.CreateContext(participantCoupon: Integer): PContext;
 var
   context: PContext;
 begin
@@ -332,7 +322,7 @@ begin
   Result := context;
 end;
 
-procedure TContextManagerService.DestroyContext(context: PContext);
+procedure TContextSession.DestroyContext(context: PContext);
 begin
   if context <> nil
   then begin
@@ -341,7 +331,7 @@ begin
   end;
 end;
 
-function TContextManagerService.GetContext(contextCoupon: Integer): PContext;
+function TContextSession.GetContext(contextCoupon: Integer): PContext;
 begin
   if (currentContext <> nil) and (currentContext^.contextCoupon = contextCoupon)
   then Result := currentContext
@@ -350,7 +340,7 @@ begin
   else Throw('Context coupon does not correspond to an active or pending context', E_INVALID_Integer);
 end;
 
-function TContextManagerService.GetCurrentcontextCoupon: Integer;
+function TContextSession.GetCurrentcontextCoupon: Integer;
 begin
   if currentContext = nil
   then Result := 0
@@ -358,7 +348,7 @@ begin
 
 end;
 
-function TContextManagerService.StartContextChanges(participantCoupon: Integer): Integer;
+function TContextSession.StartContextChanges(participantCoupon: Integer): Integer;
 var
   participant: PParticipant;
 begin
@@ -372,13 +362,13 @@ begin
   then Throw('Participant is suspended', E_INVALID_TRANSACTION);
 
   pendingContext := CreateContext(participantCoupon);
-  frmMain.pendingContext := nil;
+  sessionForm.pendingContext := nil;
   LogActivity(participant,
     'started context change (' + IntToStr(pendingContext^.contextCoupon) + ')');
   Result := pendingContext^.contextCoupon;
 end;
 
-function TContextManagerService.EndContextChanges(contextCoupon: Integer): OleVariant;
+function TContextSession.EndContextChanges(contextCoupon: Integer): OleVariant;
 var
   vote: TStrings;
 begin
@@ -388,7 +378,7 @@ begin
   Result := ToVarArray(vote, RawText);
 end;
 
-procedure TContextManagerService.MergeContexts;
+procedure TContextSession.MergeContexts;
 var
   pending: TStrings;
   current: TStrings;
@@ -431,7 +421,7 @@ begin
   end;
 end;
 
-procedure TContextManagerService.PublishChangesDecision(contextCoupon: Integer; decision: WideString);
+procedure TContextSession.PublishChangesDecision(contextCoupon: Integer; decision: WideString);
 var
   accept: Boolean;
 begin
@@ -445,31 +435,31 @@ begin
     DestroyContext(currentContext);
     currentContext := pendingContext;
     ClearChanged(currentContext^.contextItems);
-    frmMain.currentContext := currentContext;
+    sessionForm.currentContext := currentContext;
   end else begin
     DestroyContext(pendingContext);
   end;
 
   pendingContext := nil;
-  frmMain.pendingContext := nil;
+  sessionForm.pendingContext := nil;
   LogTransaction(contextCoupon, 'published changes decision: ' + decision);
 end;
 
-procedure TContextManagerService.UndoContextChanges(contextCoupon: Integer);
+procedure TContextSession.UndoContextChanges(contextCoupon: Integer);
 begin
   ValidatePendingContext(contextCoupon, -1);
   LogTransaction(contextCoupon, 'undoing context changes');
   DestroyContext(pendingContext);
   pendingContext := nil;
-  frmMain.pendingContext := nil;
+  sessionForm.pendingContext := nil;
 end;
 
-function TContextManagerService.GetItemNames(contextCoupon: Integer): OleVariant;
+function TContextSession.GetItemNames(contextCoupon: Integer): OleVariant;
 begin
   Result := ToVarArray(GetContext(contextCoupon)^.contextItems, NameComponent);
 end;
 
-function TContextManagerService.GetItemValues(participantCoupon: Integer;
+function TContextSession.GetItemValues(participantCoupon: Integer;
   itemNames: OleVariant; onlyChanges: WordBool; contextCoupon: Integer): OleVariant;
 var
   names: TStrings;
@@ -494,7 +484,7 @@ begin
   Result := ToVarArray(matches, BothComponents);
 end;
 
-procedure TContextManagerService.SetItemValues(participantCoupon: Integer;
+procedure TContextSession.SetItemValues(participantCoupon: Integer;
   itemNames, itemValues: OleVariant; contextCoupon: Integer);
 var
   i, j: Integer;
@@ -519,15 +509,15 @@ begin
       items.AddObject(name + '=' + value, Changed);
     end;
 
-    frmMain.Log('  %s=%s', [name, value]);
+    sessionForm.Log('  %s=%s', [name, value]);
   end;
 
-  frmMain.pendingContext := pendingContext;
+  sessionForm.pendingContext := pendingContext;
 end;
 
 //************************** Utility **************************/
 
-function TContextManagerService.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
+function TContextSession.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
 var
   varArray: Variant;
   i, j: Integer;
@@ -535,7 +525,7 @@ var
 
   procedure AddItem(item: String);
   begin
-    frmMain.Log('   %s', [item]);
+    sessionForm.Log('   %s', [item]);
     varArray[j] := item;
     j := j + 1;
   end;
@@ -573,7 +563,7 @@ begin
   Result := varArray;
 end;
 
-function TContextManagerService.FromVarArray(varArray: OleVariant): TStrings;
+function TContextSession.FromVarArray(varArray: OleVariant): TStrings;
 var
   i: Integer;
 begin
@@ -583,7 +573,7 @@ begin
     Result.Add(VarToStr(varArray[i]));
 end;
 
-procedure TContextManagerService.ClearChanged(items: TStrings);
+procedure TContextSession.ClearChanged(items: TStrings);
 var
   i: Integer;
 begin
@@ -591,7 +581,7 @@ begin
     items.Objects[i] := nil;
 end;
 
-function TContextManagerService.ExtractItems(src: TStrings; itemName: String;
+function TContextSession.ExtractItems(src: TStrings; itemName: String;
   onlyChanged: Boolean): TStrings;
 var
   i: Integer;
@@ -621,7 +611,7 @@ begin
 
 end;
 
-procedure TContextManagerService.ValidatePendingContext(contextCoupon: Integer;
+procedure TContextSession.ValidatePendingContext(contextCoupon: Integer;
   participantCoupon: Integer);
 begin
   if pendingContext = nil
@@ -639,43 +629,53 @@ end;
 
 //************************** Logging **************************/
 
-procedure TContextManagerService.LogActivity(participant: PParticipant; Activity: String);
+procedure TContextSession.Log(text: String);
+begin
+  sessionForm.Log(text);
+end;
+
+procedure TContextSession.Log(text: String; params: array of const);
+begin
+  sessionForm.Log(text, params);
+end;
+
+procedure TContextSession.LogActivity(participant: PParticipant; Activity: String);
 begin
   if (participant <> nil)
   then begin
-    frmMain.Log('%s(%d) %s', [participant^.title, participant^.participantCoupon, Activity]);
+    Log('%s(%d) %s', [participant^.title, participant^.participantCoupon, Activity]);
   end;
 end;
 
-procedure TContextManagerService.LogActivity(participantCoupon: Integer; Activity: String);
+procedure TContextSession.LogActivity(participantCoupon: Integer; Activity: String);
 begin
   LogActivity(FindParticipant(ParticipantCoupon), Activity);
 end;
 
-procedure TContextManagerService.LogTransaction(contextCoupon: Integer; activity: String);
+procedure TContextSession.LogTransaction(contextCoupon: Integer; activity: String);
 begin
-  frmMain.Log('Transaction (%d) %s', [contextCoupon, activity]);
+  Log('Transaction (%d) %s', [contextCoupon, activity]);
 end;
 
-procedure TContextManagerService.LogInvocation(method: String);
+procedure TContextSession.LogInvocation(method: String);
 begin
-  frmMain.Log(LOG_SEPARATOR, [GetCurrentThreadId]);
-  frmMain.Log('Invoking method %s', [method]);
+  Log(LOG_SEPARATOR, [GetCurrentThreadId]);
+  Log('Invoking method %s', [method]);
 end;
 
-procedure TContextManagerService.LogException(e: Exception);
+procedure TContextSession.LogException(e: Exception);
 begin
-  frmMain.Log('An error occured: %s', [e.Message]);
+  Log('An error occured: %s', [e.Message]);
 end;
 
 //************************** Exception Handling **************************/
 
-procedure TContextManagerService.NotImplemented(message: String);
+procedure TContextSession.NotImplemented(message: String);
 begin
   Throw(message, E_NOTIMPL);
 end;
 
-procedure TContextManagerService.Throw(text: String; code: HRESULT);
+procedure TContextSession.Throw(text: String; code: HRESULT);
 begin
   raise TContextException.Create(text, code);
 end;

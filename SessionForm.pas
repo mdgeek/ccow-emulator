@@ -1,12 +1,12 @@
-unit MainWindow;
+unit SessionForm;
 
 interface
 
 uses
-  SysUtils, Classes, Controls, Forms, StdCtrls, ExtCtrls, ContextManagerService;
+  SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ExtCtrls, Common;
 
 type
-  TfrmMain = class(TForm)
+  TSessionForm = class(TForm)
     grpActivityLog: TGroupBox;
     grpCurrentContext: TGroupBox;
     grpParticipants: TGroupBox;
@@ -21,7 +21,7 @@ type
     splitterMain: TSplitter;
     splitterTop: TSplitter;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure FormCreate(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 
   private
     procedure SetCurrentContext(context: PContext);
@@ -40,31 +40,28 @@ type
     procedure Log(text: String; params: array of const); overload;
   end;
 
-var
-  frmMain: TfrmMain;
-
 implementation
 
 {$R *.dfm}
 
-procedure TfrmMain.Log(text: String);
+procedure TSessionForm.Log(text: String);
 begin
   memoActivityLog.Lines.Add(text);
 end;
 
-procedure TfrmMain.Log(text: String; params: array of const );
+procedure TSessionForm.Log(text: String; params: array of const);
 begin
   Log(Format(text, params));
 end;
 
-procedure TfrmMain.AddParticipant(participant: PParticipant);
+procedure TSessionForm.AddParticipant(participant: PParticipant);
 begin
   RemoveParticipant(participant);
   lbParticipants.AddItem(IntToStr(participant^.participantCoupon)
     + #9 + participant^.title, TObject(participant));
 end;
 
-procedure TfrmMain.RemoveParticipant(participant: PParticipant);
+procedure TSessionForm.RemoveParticipant(participant: PParticipant);
 var
   i: Integer;
 begin
@@ -74,19 +71,19 @@ begin
   then lbParticipants.Items.Delete(i);
 end;
 
-procedure TfrmMain.SetCurrentContext(context: PContext);
+procedure TSessionForm.SetCurrentContext(context: PContext);
 begin
   SetContextItems(memoCurrentContext, context);
   SetContextCaption(grpCurrentContext, context);
 end;
 
-procedure TfrmMain.SetPendingContext(context: PContext);
+procedure TSessionForm.SetPendingContext(context: PContext);
 begin
   SetContextItems(memoPendingContext, context);
   SetContextCaption(grpPendingContext, context);
 end;
 
-procedure TfrmMain.SetContextItems(memo: TMemo; context: PContext);
+procedure TSessionForm.SetContextItems(memo: TMemo; context: PContext);
 begin
   memo.Lines.Clear;
 
@@ -94,21 +91,26 @@ begin
   then memo.Lines.AddStrings(context^.contextItems);
 end;
 
-procedure TfrmMain.SetContextCaption(grp: TGroupBox; context: PContext);
+procedure TSessionForm.SetContextCaption(grp: TGroupBox; context: PContext);
 begin
   if context = nil
   then grp.Caption := grp.Hint
   else grp.Caption := grp.Hint + ' (' + IntToStr(context^.contextCoupon) + ')';
 end;
 
-procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
+procedure TSessionForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  Service.Shutdown;
+  Parent.Free;
+  Action := caHide;
 end;
 
-procedure TfrmMain.FormCreate(Sender: TObject);
+procedure TSessionForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  Service := TContextManagerService.Create;
+  if lbParticipants.Items.Count > 0
+  then begin
+    if MessageDlg('Closing this tab will terminate all active participants.  Are you sure?', mtWarning, [mbYes, mbCancel], 0) = mrCancel
+    then CanClose := False;
+  end;
 end;
 
 end.
