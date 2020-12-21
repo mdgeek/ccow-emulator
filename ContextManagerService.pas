@@ -3,7 +3,7 @@ unit ContextManagerService;
 interface
 
 uses
-  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants;
+  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows;
 
 type
   PParticipant = ^TParticipant;
@@ -61,6 +61,7 @@ type
     function GetContext(contextCoupon: Integer): PContext;
     function GetCurrentcontextCoupon: Integer;
     procedure ValidatePendingContext(contextCoupon: Integer; participantCoupon: Integer);
+    procedure MergeContexts;
 
     function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
     function FromVarArray(varArray: OleVariant): TStrings;
@@ -95,7 +96,7 @@ type
     procedure PublishChangesDecision(contextCoupon: Integer; decision: WideString);
     procedure UndoContextChanges(contextCoupon: Integer);
     function GetItemNames(contextCoupon: Integer): OleVariant;
-    function GetItemValues(itemNames: OleVariant; onlyChanges: WordBool;
+    function GetItemValues(participantCoupon: Integer; itemNames: OleVariant; onlyChanges: WordBool;
       contextCoupon: Integer): OleVariant;
     procedure SetItemValues(participantCoupon: Integer;
       itemNames, itemValues: OleVariant; contextCoupon: Integer);
@@ -119,7 +120,7 @@ const
   E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
 
-//************* Lifecycle *************//
+//************************** Lifecycle **************************/
 
 constructor TContextManagerService.Create;
 begin
@@ -135,12 +136,12 @@ end;
 
 procedure TContextManagerService.Shutdown;
 begin
-  LogInvocation('Shutdown');
+  LogInvocation('TContextManagerService.Shutdown');
   TerminateAllParticipants;
   contextManager := nil;
 end;
 
-//************* Participant *************//
+//************************** Participant **************************/
 
 function TContextManagerService.CreateParticipant(
   contextParticipant: IDispatch; title: WideString;
@@ -314,7 +315,7 @@ begin
   participants.Clear;
 end;
 
-//************* Context *************//
+//************************** Context **************************/
 
 function TContextManagerService.CreateContext(participantCoupon: Integer): PContext;
 var
@@ -325,10 +326,6 @@ begin
   context^.participantCoupon := participantCoupon;
   context^.contextCoupon := nextContextCoupon;
   context^.contextItems := TStringList.Create();
-
-  if currentContext <> nil
-  then context^.contextItems.AddStrings(currentContext^.contextItems);
-
   Result := context;
 end;
 
@@ -383,8 +380,52 @@ var
   vote: TStrings;
 begin
   ValidatePendingContext(contextCoupon, -1);
+  MergeContexts;
   vote := PollParticipants;
   Result := ToVarArray(vote, RawText);
+end;
+
+procedure TContextManagerService.MergeContexts;
+var
+  pending: TStrings;
+  current: TStrings;
+  subjects: TStrings;
+  subject: String;
+  i: Integer;
+
+  function getSubject(item: String): String;
+  var
+    i: Integer;
+  begin
+    i := Pos('.', item);
+
+    if i < 2
+    then Result := ''
+    else Result := LeftStr(item, i - 1);
+  end;
+begin
+  if currentContext = nil
+  then Exit;
+
+  subjects := TStringList.Create;
+  pending := pendingContext^.contextItems;
+  current := currentContext^.contextItems;
+
+  for i := 0 to pending.Count - 1 do
+  begin
+    subject := getSubject(pending.Names[i]);
+
+    if (subject <> '') and (subjects.IndexOf(subject) = -1)
+    then subjects.add(subject);
+  end;
+
+  for i := 0 to current.Count - 1 do
+  begin
+    subject := getSubject(current.Names[i]);
+
+    if subjects.IndexOf(subject) = -1
+    then pending.Add(current[i]);
+  end;
 end;
 
 procedure TContextManagerService.PublishChangesDecision(contextCoupon: Integer; decision: WideString);
@@ -425,8 +466,8 @@ begin
   Result := ToVarArray(GetContext(contextCoupon)^.contextItems, NameComponent);
 end;
 
-function TContextManagerService.GetItemValues(itemNames: OleVariant;
-  onlyChanges: WordBool; contextCoupon: Integer): OleVariant;
+function TContextManagerService.GetItemValues(participantCoupon: Integer;
+  itemNames: OleVariant; onlyChanges: WordBool; contextCoupon: Integer): OleVariant;
 var
   names: TStrings;
   itemName: String;
@@ -434,6 +475,9 @@ var
   matches: TStrings;
   i: Integer;
 begin
+  if participantCoupon >= 0
+  then LogActivity(participantCoupon, 'is retrieving item values');
+
   items := GetContext(contextCoupon)^.contextItems;
   matches := TStringList.Create;
   names := FromVarArray(itemNames);
@@ -453,6 +497,7 @@ var
   i, j: Integer;
   items: TStrings;
   name: String;
+  value: String;
 begin
   ValidatePendingContext(contextCoupon, participantCoupon);
   LogActivity(participantCoupon, 'is setting item values');
@@ -460,22 +505,24 @@ begin
 
   for i := VarArrayLowBound(itemNames, 1) to VarArrayHighBound(itemNames, 1) do begin
     name := AnsiLowerCase(itemNames[i]);
+    value := itemValues[i];
     j := items.IndexOfName(name);
 
     if j >= 0
     then begin
-      items.ValueFromIndex[j] := itemValues[i];
+      items.ValueFromIndex[j] := value;
       items.Objects[j] := Changed;
     end else begin
-      items.AddObject(name + '=' + itemValues[i], Changed);
+      items.AddObject(name + '=' + value, Changed);
     end;
+
+    frmMain.Log('  %s=%s', [name, value]);
   end;
 
   frmMain.pendingContext := pendingContext;
-  LogActivity(participantCoupon, 'set ' + IntToStr(items.Count) + ' item(s)');
 end;
 
-//************* Utility *************//
+//************************** Utility **************************/
 
 function TContextManagerService.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
 var
@@ -485,6 +532,7 @@ var
 
   procedure AddItem(item: String);
   begin
+    frmMain.Log('   %s', [item]);
     varArray[j] := item;
     j := j + 1;
   end;
@@ -495,8 +543,6 @@ begin
     Result := VarArrayCreate([0, 0], varOleStr);
     Exit;
   end;
-
-  frmMain.Log('Returning: %s', [items.CommaText]);
 
   upper := items.Count;
 
@@ -588,7 +634,7 @@ begin
     E_INVALID_Integer);
 end;
 
-//************* Logging *************//
+//************************** Logging **************************/
 
 procedure TContextManagerService.LogActivity(participant: PParticipant; Activity: String);
 begin
@@ -610,7 +656,7 @@ end;
 
 procedure TContextManagerService.LogInvocation(method: String);
 begin
-  frmMain.Log('------------------------------');
+  frmMain.Log('------------------------------> %d', [GetCurrentThreadId]);
   frmMain.Log('Invoking method %s', [method]);
 end;
 
@@ -619,7 +665,7 @@ begin
   frmMain.Log('An error occured: %s', [e.Message]);
 end;
 
-//************* Exception Handling *************//
+//************************** Exception Handling **************************/
 
 procedure TContextManagerService.NotImplemented(message: String);
 begin

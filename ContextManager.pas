@@ -15,7 +15,7 @@ type
 
   protected
 
-    //************* IContextManager *************//
+    //************************** IContextManager **************************/
 
     function IContextManager.EndContextChanges = IContextManager_EndContextChanges;
     function IContextManager_EndContextChanges(contextCoupon: Integer;
@@ -49,7 +49,7 @@ type
     procedure IContextManager.UndoContextChanges = IContextManager_UndoContextChanges;
     procedure IContextManager_UndoContextChanges(contextCoupon: Integer); safecall;
 
-    //************* IContextData *************//
+    //************************** IContextData **************************/
 
     function IContextData.GetItemNames = IContextData_GetItemNames;
     function IContextData_GetItemNames(contextCoupon: Integer): OleVariant; safecall;
@@ -66,7 +66,7 @@ type
     procedure IContextData_SetItemValues(participantCoupon: Integer; itemNames,
       itemValues: OleVariant; contextCoupon: Integer); safecall;
 
-    //************* ISecureBinding *************//
+    //************************** ISecureBinding **************************/
 
     function ISecureBinding.FinalizeBinding = ISecureBinding_FinalizeBinding;
     function ISecureBinding_FinalizeBinding(bindeeCoupon: Integer; const bindeePublicKey, mac: WideString): OleVariant; safecall;
@@ -75,14 +75,14 @@ type
     function ISecureBinding_InitializeBinding(bindeeCoupon: Integer; propertyNames, propertyValues: OleVariant;
       var binderPublicKey: WideString): WideString; safecall;
 
-    //************* ISecureContextData *************//
+    //************************** ISecureContextData **************************/
 
     function ISecureContextData.GetItemNames = ISecureContextData_GetItemNames;
     function ISecureContextData_GetItemNames(contextCoupon: Integer): OleVariant; safecall;
 
     function ISecureContextData.GetItemValues = ISecureContextData_GetItemValues;
     function ISecureContextData_GetItemValues(participantCoupon: Integer;
-      names: OleVariant; onlyChanges: WordBool; contextCoupon: Integer;
+      itemNames: OleVariant; onlyChanges: WordBool; contextCoupon: Integer;
       const appSignature: WideString; var managerSignature: WideString): OleVariant; safecall;
 
     procedure ISecureContextData.SetItemValues = ISecureContextData_SetItemValues;
@@ -90,7 +90,7 @@ type
       itemNames, itemValues: OleVariant; contextCoupon: Integer;
       const appSignature: WideString); safecall;
 
-    //************* IContextAction *************//
+    //************************** IContextAction **************************/
 
     function IContextAction.Perform = IContextAction_Perform;
     function IContextAction_Perform(participantCoupon: Integer;
@@ -98,7 +98,7 @@ type
       var actionCoupon: Integer; var outItemNames,
       outItemValues: OleVariant): WideString; safecall;
 
-    //************* IContextFilter *************//
+    //************************** IContextFilter **************************/
 
     function IContextFilter.GetSubjectsOfInterest = IContextFilter_GetSubjectsOfInterest;
     function IContextFilter_GetSubjectsOfInterest(participantCoupon: Integer): OleVariant; safecall;
@@ -125,7 +125,7 @@ begin
   else Result := inherited SafeCallException(ExceptObject, ExceptAddr);
 end;
 
-//************* IContextManager *************//
+//************************** IContextManager **************************/
 
 function TContextManager.IContextManager_JoinCommonContext(
   const contextParticipant: IDispatch; const sApplicationTitle: WideString;
@@ -188,7 +188,7 @@ begin
   Service.UndoContextChanges(contextCoupon);
 end;
 
-//************* IContextData *************//
+//************************** IContextData **************************/
 
 function TContextManager.IContextData_GetItemNames(contextCoupon: Integer): OleVariant;
 begin
@@ -200,7 +200,7 @@ function TContextManager.IContextData_GetItemValues(itemNames: OleVariant;
   onlyChanges: WordBool; contextCoupon: Integer): OleVariant;
 begin
   Service.LogInvocation('IContextData.GetItemValues');
-  Result := Service.GetItemValues(itemNames, onlyChanges, contextCoupon);
+  Result := Service.GetItemValues(-1, itemNames, onlyChanges, contextCoupon);
 end;
 
 procedure TContextManager.IContextData_DeleteItems(participantCoupon: Integer;
@@ -217,24 +217,22 @@ begin
   Service.SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
 end;
 
-//************* ISecureContextData *************//
+//************************** ISecureContextData **************************/
 
 function TContextManager.ISecureContextData_GetItemNames(
   contextCoupon: Integer): OleVariant;
 begin
   Service.LogInvocation('ISecureContextData.GetItemNames');
-  frmMain.Log('Delegating to IContextData.GetItemNames');
-  Result := IContextData_GetItemNames(contextCoupon);
+  Result := Service.GetItemNames(contextCoupon);
 end;
 
 function TContextManager.ISecureContextData_GetItemValues(
-  participantCoupon: Integer; names: OleVariant; onlyChanges: WordBool;
+  participantCoupon: Integer; itemNames: OleVariant; onlyChanges: WordBool;
   contextCoupon: Integer; const appSignature: WideString;
   var managerSignature: WideString): OleVariant;
 begin
   Service.LogInvocation('ISecureContextData.GetItemValues');
-  frmMain.Log('Delegating to IContextData.GetItemValues');
-  Result := IContextData_GetItemValues(names, onlyChanges, contextCoupon);
+  Result := Service.GetItemValues(participantCoupon, itemNames, onlyChanges, contextCoupon);
 end;
 
 procedure TContextManager.ISecureContextData_SetItemValues(
@@ -242,11 +240,10 @@ procedure TContextManager.ISecureContextData_SetItemValues(
   contextCoupon: Integer; const appSignature: WideString);
 begin
   Service.LogInvocation('ISecureContextData.SetItemValues');
-  frmMain.Log('Delegating to IContextData.SetItemValues');
-  IContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
+  Service.SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
 end;
 
-//************* ISecureBinding *************//
+//************************** ISecureBinding **************************/
 
 function TContextManager.ISecureBinding_FinalizeBinding(bindeeCoupon: Integer;
   const bindeePublicKey, mac: WideString): OleVariant;
@@ -261,7 +258,7 @@ begin
   Service.LogInvocation('ISecureBinding.InitializeBinding');
 end;
 
-//************* IContextAction *************//
+//************************** IContextAction **************************/
 
 function TContextManager.IContextAction_Perform(participantCoupon: Integer; itemNames,
   itemValues: OleVariant; const appSignature: WideString;
@@ -272,7 +269,7 @@ begin
   Service.NotImplemented('IContextAction.Perform is not implemented');
 end;
 
-//************* IContextFilter *************//
+//************************** IContextFilter **************************/
 
 function TContextManager.IContextFilter_GetSubjectsOfInterest(
   participantCoupon: Integer): OleVariant;
