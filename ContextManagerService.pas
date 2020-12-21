@@ -111,7 +111,6 @@ implementation
 uses MainWindow;
 
 const
-
   E_FAIL = HRESULT($80004005);
   E_TRANSACTION_IN_PROGRESS = HRESULT($80000209);
   E_NOT_IN_TRANSACTION = HRESULT($80000207);
@@ -120,10 +119,14 @@ const
   E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
 
+var
+  LOG_SEPARATOR: String;
+
 //************************** Lifecycle **************************/
 
 constructor TContextManagerService.Create;
 begin
+  LOG_SEPARATOR := StringOfChar('-', 80) + '> %d';
   LogInvocation('TContextManagerService.Create');
   participants := TList.Create;
 
@@ -656,7 +659,7 @@ end;
 
 procedure TContextManagerService.LogInvocation(method: String);
 begin
-  frmMain.Log('------------------------------> %d', [GetCurrentThreadId]);
+  frmMain.Log(LOG_SEPARATOR, [GetCurrentThreadId]);
   frmMain.Log('Invoking method %s', [method]);
 end;
 
