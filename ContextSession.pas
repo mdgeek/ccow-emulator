@@ -212,7 +212,7 @@ begin
   then action := 'canceled'
   else action := 'committed';
 
-  sessionForm.Log('Context change %s, notifying participants...', [action]);
+  Log('Context change %s, notifying participants...', [action]);
   count := 0;
   contextCoupon := pendingContext^.contextCoupon;
 
@@ -231,7 +231,7 @@ begin
     end;
   end;
 
-  sessionForm.Log('Notified %d out of %d participant(s)', [count, participants.Count]);
+  Log('Notified %d out of %d participant(s)', [count, participants.Count]);
 end;
 
 function TContextSession.PollParticipants: TStrings;
@@ -244,7 +244,7 @@ var
   response: WideString;
   decision: TSurveyDecision;
 begin
-  sessionForm.Log('Polling participants...');
+  Log('Polling participants...');
   Result := nil;
   count := 0;
 
@@ -279,7 +279,7 @@ begin
     end;
   end;
 
-  sessionForm.Log('Polled %d out of %d participant(s)', [count, participants.Count]);
+  Log('Polled %d out of %d participant(s)', [count, participants.Count]);
 end;
 
 procedure TContextSession.AddParticipant(participant: PParticipant);
@@ -302,7 +302,7 @@ var
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
-  sessionForm.Log('Terminating all active participants...');
+  Log('Terminating all active participants...');
 
   for i := 0 to participants.Count - 1 do
   begin
@@ -524,7 +524,7 @@ begin
       items.AddObject(name + '=' + value, Changed);
     end;
 
-    sessionForm.Log('  %s=%s', [name, value]);
+    Log('  %s=%s', [name, value]);
   end;
 
   sessionForm.pendingContext := pendingContext;
@@ -540,7 +540,7 @@ var
 
   procedure AddItem(item: String);
   begin
-    sessionForm.Log('   %s', [item]);
+    Log('   %s', [item]);
     varArray[j] := item;
     j := j + 1;
   end;
