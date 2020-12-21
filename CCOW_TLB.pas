@@ -12,7 +12,7 @@ unit CCOW_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 12/21/2020 1:21:10 PM from Type Library described below.
+// File generated on 12/21/2020 2:53:18 PM from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: Y:\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator.tlb (1)
@@ -54,6 +54,7 @@ const
   IID_IContextFilter: TGUID = '{637CD323-0175-45FA-AD5C-B7DE53CD1AFD}';
   IID_IContextSession: TGUID = '{A76D5873-D2D3-4668-AE0F-37C8B6A380E4}';
   IID_ISecureContextData: TGUID = '{6F530680-BC14-11D1-90B1-76C60D000000}';
+  IID_IImplementationInformation: TGUID = '{41123600-6CE1-11D1-AB3F-E892F500000C}';
   CLASS_ContextManager: TGUID = '{E56E7071-E8FC-4D76-872E-10EDE51ED076}';
 type
 
@@ -76,6 +77,8 @@ type
   IContextSessionDisp = dispinterface;
   ISecureContextData = interface;
   ISecureContextDataDisp = dispinterface;
+  IImplementationInformation = interface;
+  IImplementationInformationDisp = dispinterface;
 
 // *********************************************************************//
 // Declaration of CoClasses defined in Type Library                       
@@ -307,6 +310,48 @@ type
     function GetItemValues(participantCoupon: Integer; names: OleVariant; onlyChanges: WordBool; 
                            contextCoupon: Integer; const appSignature: WideString; 
                            var managerSignature: WideString): OleVariant; dispid 203;
+  end;
+
+// *********************************************************************//
+// Interface: IImplementationInformation
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {41123600-6CE1-11D1-AB3F-E892F500000C}
+// *********************************************************************//
+  IImplementationInformation = interface(IDispatch)
+    ['{41123600-6CE1-11D1-AB3F-E892F500000C}']
+    function Get_ComponentName: WideString; safecall;
+    function Get_RevMajorNum: WideString; safecall;
+    function Get_RevMinorNum: WideString; safecall;
+    function Get_PartNumber: WideString; safecall;
+    function Get_Manufacturer: WideString; safecall;
+    function Get_TargetOS: WideString; safecall;
+    function Get_TargetOSRev: WideString; safecall;
+    function Get_WhenInstalled: WideString; safecall;
+    property ComponentName: WideString read Get_ComponentName;
+    property RevMajorNum: WideString read Get_RevMajorNum;
+    property RevMinorNum: WideString read Get_RevMinorNum;
+    property PartNumber: WideString read Get_PartNumber;
+    property Manufacturer: WideString read Get_Manufacturer;
+    property TargetOS: WideString read Get_TargetOS;
+    property TargetOSRev: WideString read Get_TargetOSRev;
+    property WhenInstalled: WideString read Get_WhenInstalled;
+  end;
+
+// *********************************************************************//
+// DispIntf:  IImplementationInformationDisp
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {41123600-6CE1-11D1-AB3F-E892F500000C}
+// *********************************************************************//
+  IImplementationInformationDisp = dispinterface
+    ['{41123600-6CE1-11D1-AB3F-E892F500000C}']
+    property ComponentName: WideString readonly dispid 201;
+    property RevMajorNum: WideString readonly dispid 202;
+    property RevMinorNum: WideString readonly dispid 203;
+    property PartNumber: WideString readonly dispid 204;
+    property Manufacturer: WideString readonly dispid 205;
+    property TargetOS: WideString readonly dispid 206;
+    property TargetOSRev: WideString readonly dispid 207;
+    property WhenInstalled: WideString readonly dispid 208;
   end;
 
 // *********************************************************************//

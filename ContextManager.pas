@@ -5,11 +5,11 @@ unit ContextManager;
 interface
 
 uses
-  ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl, ContextSession;
+  ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl, ContextSession, Forms;
 
 type
   TContextManager = class(TAutoObject, IContextManager, IContextData,
-    IContextAction, ISecureBinding, ISecureContextData, IContextFilter, IContextSession)
+    IContextAction, ISecureBinding, ISecureContextData, IContextFilter, IContextSession, IImplementationInformation)
 
   private
     session: TContextSession;
@@ -118,6 +118,32 @@ type
     procedure IContextSession.Activate = IContextSession_Activate;
     procedure IContextSession_Activate(participantCoupon: Integer;
       const cmToActivate: IDispatch; const nonce, appSignature: WideString); safecall;
+
+    //************************** IImplementationInformation **************************/
+
+    function IImplementationInformation.Get_ComponentName = IImplementationInformation_Get_ComponentName;
+    function IImplementationInformation_Get_ComponentName: WideString; safecall;
+
+    function IImplementationInformation.Get_Manufacturer = IImplementationInformation_Get_Manufacturer;
+    function IImplementationInformation_Get_Manufacturer: WideString; safecall;
+
+    function IImplementationInformation.Get_PartNumber = IImplementationInformation_Get_PartNumber;
+    function IImplementationInformation_Get_PartNumber: WideString; safecall;
+
+    function IImplementationInformation.Get_RevMajorNum = IImplementationInformation_Get_RevMajorNum;
+    function IImplementationInformation_Get_RevMajorNum: WideString; safecall;
+
+    function IImplementationInformation.Get_RevMinorNum = IImplementationInformation_Get_RevMinorNum;
+    function IImplementationInformation_Get_RevMinorNum: WideString; safecall;
+
+    function IImplementationInformation.Get_TargetOS = IImplementationInformation_Get_TargetOS;
+    function IImplementationInformation_Get_TargetOS: WideString; safecall;
+
+    function IImplementationInformation.Get_TargetOSRev = IImplementationInformation_Get_TargetOSRev;
+    function IImplementationInformation_Get_TargetOSRev: WideString; safecall;
+
+    function IImplementationInformation.Get_WhenInstalled = IImplementationInformation_Get_WhenInstalled;
+    function IImplementationInformation_Get_WhenInstalled: WideString; safecall;
 
 
   public
@@ -335,6 +361,48 @@ begin
   newSession := TContextManager(cmToActivate).session;
   participant := session.RemoveParticipant(participantCoupon);
   newSession.AddParticipant(participant);
+end;
+
+//************************** IImplementationInformation **************************/
+
+function TContextManager.IImplementationInformation_Get_ComponentName: WideString;
+begin
+  Result := Application.Title;
+end;
+
+function TContextManager.IImplementationInformation_Get_Manufacturer: WideString;
+begin
+  Result := 'University of Utah';
+end;
+
+function TContextManager.IImplementationInformation_Get_PartNumber: WideString;
+begin
+  Result := Null;
+end;
+
+function TContextManager.IImplementationInformation_Get_RevMajorNum: WideString;
+begin
+  Result := '1';
+end;
+
+function TContextManager.IImplementationInformation_Get_RevMinorNum: WideString;
+begin
+  Result := '0';
+end;
+
+function TContextManager.IImplementationInformation_Get_TargetOS: WideString;
+begin
+  Result := 'Windows';
+end;
+
+function TContextManager.IImplementationInformation_Get_TargetOSRev: WideString;
+begin
+  Result := 'All'
+end;
+
+function TContextManager.IImplementationInformation_Get_WhenInstalled: WideString;
+begin
+  Result := Null;
 end;
 
 initialization

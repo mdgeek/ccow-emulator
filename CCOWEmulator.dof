@@ -106,7 +106,7 @@ Launcher=
 UseLauncher=0
 DebugCWD=
 [Version Info]
-IncludeVerInfo=0
+IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=0
@@ -120,13 +120,13 @@ DLL=0
 Locale=1033
 CodePage=1252
 [Version Info Keys]
-CompanyName=
+CompanyName=University of Utah
 FileDescription=
 FileVersion=1.0.0.0
 InternalName=
 LegalCopyright=
 LegalTrademarks=
 OriginalFilename=
-ProductName=
+ProductName=CCOW Emulator
 ProductVersion=1.0.0.0
 Comments=
