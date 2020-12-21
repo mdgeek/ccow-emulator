@@ -12,7 +12,7 @@ unit CCOW_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 12/21/2020 11:58:49 AM from Type Library described below.
+// File generated on 12/21/2020 1:21:10 PM from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: Y:\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator.tlb (1)
@@ -261,7 +261,7 @@ type
   IContextSession = interface(IDispatch)
     ['{A76D5873-D2D3-4668-AE0F-37C8B6A380E4}']
     function Create: IDispatch; safecall;
-    procedure Activate(participantCoupon: Integer; var cmToActivate: IDispatch; 
+    procedure Activate(participantCoupon: Integer; const cmToActivate: IDispatch; 
                        const nonce: WideString; const appSignature: WideString); safecall;
   end;
 
@@ -273,7 +273,7 @@ type
   IContextSessionDisp = dispinterface
     ['{A76D5873-D2D3-4668-AE0F-37C8B6A380E4}']
     function Create: IDispatch; dispid 201;
-    procedure Activate(participantCoupon: Integer; var cmToActivate: IDispatch; 
+    procedure Activate(participantCoupon: Integer; const cmToActivate: IDispatch; 
                        const nonce: WideString; const appSignature: WideString); dispid 202;
   end;
 

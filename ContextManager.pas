@@ -9,7 +9,7 @@ uses
 
 type
   TContextManager = class(TAutoObject, IContextManager, IContextData,
-    IContextAction, ISecureBinding, ISecureContextData, IContextFilter)
+    IContextAction, ISecureBinding, ISecureContextData, IContextFilter, IContextSession)
 
   private
     session: TContextSession;
@@ -110,9 +110,18 @@ type
     procedure IContextFilter.SetSubjectsOfInterest = IContextFilter_SetSubjectsOfInterest;
     procedure IContextFilter_SetSubjectsOfInterest(participantCoupon: Integer; subjectNames: OleVariant); safecall;
 
+    //************************** IContextSession **************************/
+
+    function IContextSession.Create = IContextSession_Create;
+    function IContextSession_Create: IDispatch; safecall;
+
+    procedure IContextSession.Activate = IContextSession_Activate;
+    procedure IContextSession_Activate(participantCoupon: Integer;
+      const cmToActivate: IDispatch; const nonce,
+      appSignature: WideString); safecall;
+
 
   public
-    procedure Initialize; override;
     function SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT; override;
 
   end;
@@ -120,12 +129,6 @@ type
 implementation
 
 uses ComServ;
-
-procedure TContextManager.Initialize;
-begin
-  inherited;
-  session := DefaultSession;
-end;
 
 function TContextManager.SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT;
 begin
@@ -300,6 +303,26 @@ procedure TContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon
   subjectNames: OleVariant);
 begin
   session.LogInvocation('IContextFilter.SetSubjectsOfInterest');
+
+end;
+
+//************************** IContextSession **************************/
+
+function TContextManager.IContextSession_Create: IDispatch;
+var
+  contextManager: IContextManager;
+begin
+  session.LogInvocation('IContextSession.Create');
+  contextManager := CoContextManager.Create;
+  TContextManager(contextManager).session := TContextSession.Create;
+  Result := contextManager;
+end;
+
+procedure TContextManager.IContextSession_Activate(
+  participantCoupon: Integer; const cmToActivate: IDispatch; const nonce,
+  appSignature: WideString);
+begin
+  session.LogInvocation('IContextSession.Activate');
 
 end;
 

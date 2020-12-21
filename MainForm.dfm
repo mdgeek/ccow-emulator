@@ -12,7 +12,6 @@ object frmMain: TfrmMain
   Font.Style = []
   OldCreateOrder = False
   Position = poDefaultSizeOnly
-  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13

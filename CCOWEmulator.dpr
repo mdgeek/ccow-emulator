@@ -2,11 +2,11 @@ program CCOWEmulator;
 
 uses
   Forms,
-  SessionForm in 'SessionForm.pas',
-  CCOW_TLB in 'CCOW_TLB.pas',
-  ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
-  ContextSession in 'ContextSession.pas',
   Common in 'Common.pas',
+  ContextSession in 'ContextSession.pas',
+  CCOW_TLB in 'CCOW_TLB.pas',
+  SessionForm in 'SessionForm.pas',
+  ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
   MainForm in 'MainForm.pas' {frmMain};
 
 {$R *.TLB}

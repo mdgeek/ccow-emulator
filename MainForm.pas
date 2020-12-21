@@ -3,17 +3,16 @@ unit MainForm;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ComCtrls, SessionForm;
+  SysUtils, Forms, ComServ, SessionForm, ComCtrls, Classes, Controls;
 
 type
   TfrmMain = class(TForm)
     pages: TPageControl;
     procedure FormCreate(Sender: TObject);
-    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
   public
     function CreateSession(sessionId: Integer): TSessionForm;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure OnLastRelease(var Shutdown: Boolean);
   end;
 
 var
@@ -22,12 +21,6 @@ var
 implementation
 
 {$R *.dfm}
-
-uses
-  CCOW_TLB;
-  
-var
-  contextManager: IContextManager;
 
 function TfrmMain.CreateSession(sessionId: Integer): TSessionForm;
 var
@@ -39,6 +32,7 @@ begin
   tab.Caption := 'Session #' + IntToStr(sessionId);
   tab.FreeNotification(Self);
   sessionForm := TSessionForm.Create(tab);
+  sessionForm.Caption := tab.Caption;
   sessionForm.Parent := tab;
   sessionForm.Show;
   Result := sessionForm;
@@ -54,13 +48,12 @@ end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  if contextManager = nil
-  then contextManager := CoContextManager.Create;
+  ComServer.OnLastRelease := OnLastRelease;
 end;
 
-procedure TfrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+procedure TfrmMain.OnLastRelease(var Shutdown: Boolean);
 begin
-  contextManager := nil;
+  Shutdown := False;
 end;
 
 end.
