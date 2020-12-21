@@ -50,7 +50,8 @@ type
     procedure ClearChanged(items: TStrings);
     function ExtractItems(src: TStrings; itemName: String; onlyChanged: Boolean): TStrings;
 
-    procedure Throw(text: String; code: HRESULT);
+    procedure Throw(text: String; code: HRESULT); overload;
+   procedure Throw(text: String; code: HRESULT; params: array of const); overload;
 
     procedure SessionDestroy(Sender: TObject);
 
@@ -104,7 +105,7 @@ const
   E_TRANSACTION_IN_PROGRESS = HRESULT($80000209);
   E_NOT_IN_TRANSACTION = HRESULT($80000207);
   E_INVALID_TRANSACTION = HRESULT($80000211);
-  E_INVALID_Integer = HRESULT($80000203);
+  E_INVALID_CONTEXT_COUPON = HRESULT($80000203);
   E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
 
@@ -195,8 +196,7 @@ begin
   end;
 
   if Result = nil
-  then Throw('No participant found for coupon ' + IntToStr(participantCoupon),
-    E_UNKNOWN_PARTICIPANT);
+  then Throw('No participant found for coupon %d', E_UNKNOWN_PARTICIPANT, [participantCoupon]);
 end;
 
 procedure TContextSession.NotifyParticipants(canceled: Boolean);
@@ -265,7 +265,7 @@ begin
       then decision := Decision_Accept
       else if response = 'conditionally_accept'
       then decision := Decision_ConditionallyAccept
-      else Throw('Unknown survey response: ' + response, E_ACCEPT_NOT_POSSIBLE);
+      else Throw('Unknown survey response: %s', E_ACCEPT_NOT_POSSIBLE, [response]);
 
       LogActivity(participant, 'responded with: ' + reason);
 
@@ -352,7 +352,8 @@ begin
   then Result := currentContext
   else if (pendingContext <> nil) and (pendingContext^.contextCoupon = contextCoupon)
   then Result := pendingContext
-  else Throw('Context coupon does not correspond to an active or pending context', E_INVALID_Integer);
+  else Throw('Context coupon %d does not correspond to an active or pending context',
+    E_INVALID_CONTEXT_COUPON, [contextCoupon]);
 end;
 
 function TContextSession.GetCurrentcontextCoupon: Integer;
@@ -368,8 +369,7 @@ var
   participant: PParticipant;
 begin
   if pendingContext <> nil
-  then Throw('A context change transaction is already in progress',
-    E_TRANSACTION_IN_PROGRESS);
+  then Throw('A context change transaction is already in progress', E_TRANSACTION_IN_PROGRESS);
 
   participant := FindParticipant(participantCoupon);
 
@@ -633,13 +633,11 @@ begin
   then Throw('No context change transaction is active', E_NOT_IN_TRANSACTION);
 
   if contextCoupon <> pendingContext^.contextCoupon
-  then Throw('An invalid context coupon (' + IntToStr(contextCoupon)
-    + ') was provided', E_INVALID_Integer);
+  then Throw('An invalid context coupon (%d) was provided', E_INVALID_CONTEXT_COUPON, [contextCoupon]);
 
   if (participantCoupon >= 0) and (pendingContext^.participantCoupon <> participantCoupon)
-  then Throw('Participant (' + IntToStr(participantCoupon)
-    + ') did not initiate this transaction (' + IntToStr(contextCoupon) + ')',
-    E_INVALID_Integer);
+  then Throw('Participant (%d) did not initiate this transaction (%d)',
+    E_INVALID_CONTEXT_COUPON, [participantCoupon, contextCoupon]);
 end;
 
 //************************** Logging **************************/
@@ -693,6 +691,11 @@ end;
 procedure TContextSession.Throw(text: String; code: HRESULT);
 begin
   raise TContextException.Create(text, code);
+end;
+
+procedure TContextSession.Throw(text: String; code: HRESULT; params: array of const);
+begin
+  Throw(Format(text, params), code);
 end;
 
 constructor TContextException.Create(text: String; code: HRESULT);
