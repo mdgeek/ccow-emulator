@@ -21,7 +21,7 @@ type
   PContext = ^TContext;
 
   TContext = record
-    participantCoupon: Integer;
+    participant: PParticipant;
     contextCoupon: Integer;
     contextItems: TStrings;
   end;

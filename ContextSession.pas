@@ -107,8 +107,9 @@ const
   E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
 
+  LOG_SEPARATOR = '------------------------------------------------------------';
+
 var
-  LOG_SEPARATOR: String;
   nextSessionId: Integer;
 
 //************************** Lifecycle **************************/
@@ -119,7 +120,6 @@ begin
   sessionId := nextSessionId;
   sessionForm := frmMain.CreateSession(sessionId);
   sessionForm.OnDestroy := Self.SessionDestroy;
-  LOG_SEPARATOR := '[%d]' + StringOfChar('-', 60);
   LogInvocation('TContextSession.Create');
   participants := TList.Create;
 
@@ -194,7 +194,7 @@ begin
   end;
 
   if Result = nil
-  then Throw('No participant found for coupon %d', E_UNKNOWN_PARTICIPANT, [participantCoupon]);
+  then Throw('No participant found for coupon [pc#%d]', E_UNKNOWN_PARTICIPANT, [participantCoupon]);
 end;
 
 procedure TContextSession.NotifyParticipants(canceled: Boolean);
@@ -258,7 +258,7 @@ begin
     participant := participants[i];
 
     if Not(participant^.suspended) and participant^.survey
-      and (participant^.participantCoupon <> pendingContext^.participantCoupon)
+      and (participant <> pendingContext^.participant)
     then begin
       count := count + 1;
       contextParticipant := participant^.contextParticipant;
@@ -329,10 +329,12 @@ end;
 function TContextSession.CreateContext(participantCoupon: Integer): PContext;
 var
   context: PContext;
+  participant: PParticipant;
 begin
+  participant := FindParticipant(participantCoupon);
   nextContextCoupon := nextContextCoupon + 1;
   context := New (PContext);
-  context^.participantCoupon := participantCoupon;
+  context^.participant := participant;
   context^.contextCoupon := nextContextCoupon;
   context^.contextItems := TStringList.Create();
   Result := context;
@@ -344,6 +346,7 @@ begin
   then begin
     context^.contextItems.Destroy;
     context^.contextItems := nil;
+    context^.participant := nil;
   end;
 end;
 
@@ -353,7 +356,7 @@ begin
   then Result := currentContext
   else if (pendingContext <> nil) and (pendingContext^.contextCoupon = contextCoupon)
   then Result := pendingContext
-  else Throw('Context coupon %d does not correspond to an active or pending context',
+  else Throw('Context coupon [cc#%d] does not correspond to an active or pending context',
     E_INVALID_CONTEXT_COUPON, [contextCoupon]);
 end;
 
@@ -531,6 +534,19 @@ begin
   sessionForm.pendingContext := pendingContext;
 end;
 
+procedure TContextSession.ValidatePendingContext(contextCoupon: Integer; participantCoupon: Integer);
+begin
+  if pendingContext = nil
+  then Throw('No context change transaction is active', E_NOT_IN_TRANSACTION);
+
+  if contextCoupon <> pendingContext^.contextCoupon
+  then Throw('An invalid context coupon [cc#%d] was provided', E_INVALID_CONTEXT_COUPON, [contextCoupon]);
+
+  if (participantCoupon > -1) and (participantCoupon <> pendingContext^.participant.participantCoupon)
+  then Throw('Participant [pc#%d] did not initiate this transaction [cc#%d]',
+    E_INVALID_CONTEXT_COUPON, [participantCoupon, contextCoupon]);
+end;
+
 //************************** Utility **************************/
 
 function TContextSession.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
@@ -558,7 +574,7 @@ var
 begin
   if (items = nil) or (items.Count = 0)
   then begin
-    Result := VarArrayCreate([0, 0], varOleStr);
+    Result := VarArrayCreate([0, -1], varOleStr);
     Exit;
   end;
 
@@ -632,20 +648,6 @@ begin
 
 end;
 
-procedure TContextSession.ValidatePendingContext(contextCoupon: Integer;
-  participantCoupon: Integer);
-begin
-  if pendingContext = nil
-  then Throw('No context change transaction is active', E_NOT_IN_TRANSACTION);
-
-  if contextCoupon <> pendingContext^.contextCoupon
-  then Throw('An invalid context coupon (%d) was provided', E_INVALID_CONTEXT_COUPON, [contextCoupon]);
-
-  if (participantCoupon >= 0) and (pendingContext^.participantCoupon <> participantCoupon)
-  then Throw('Participant (%d) did not initiate this transaction (%d)',
-    E_INVALID_CONTEXT_COUPON, [participantCoupon, contextCoupon]);
-end;
-
 //************************** Logging **************************/
 
 procedure TContextSession.Log(text: String);
@@ -658,32 +660,32 @@ begin
   sessionForm.Log(text, params);
 end;
 
-procedure TContextSession.LogActivity(participant: PParticipant; Activity: String);
+procedure TContextSession.LogActivity(participant: PParticipant; activity: String);
 begin
   if (participant <> nil)
   then begin
-    Log('%s(%d) %s', [participant^.title, participant^.participantCoupon, Activity]);
+    Log('%s [pc#%d] %s', [participant^.title, participant^.participantCoupon, activity]);
   end;
 end;
 
-procedure TContextSession.LogActivity(participantCoupon: Integer; Activity: String);
+procedure TContextSession.LogActivity(participantCoupon: Integer; activity: String);
 begin
-  LogActivity(FindParticipant(ParticipantCoupon), Activity);
+  LogActivity(FindParticipant(ParticipantCoupon), activity);
 end;
 
 procedure TContextSession.LogActivity(context: PContext; activity: String);
 var
   participant: PParticipant;
 begin
-  participant := FindParticipant(context^.participantCoupon);
-  Log('%s(%d) %s (tx#%d)', [participant^.title, participant^.participantCoupon,
+  participant := context^.participant;
+  Log('%s [pc#%d] %s [cc#%d]', [participant^.title, participant^.participantCoupon,
     activity, context^.contextCoupon]);
 end;
 
 procedure TContextSession.LogInvocation(method: String);
 begin
-  Log(LOG_SEPARATOR, [GetCurrentThreadId]);
-  Log('Invoking method %s', [method]);
+  Log(LOG_SEPARATOR);
+  Log('Invoking method %s [thread#%d]', [method, GetCurrentThreadId]);
 end;
 
 procedure TContextSession.LogException(e: Exception);
