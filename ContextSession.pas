@@ -27,16 +27,16 @@ type
 
     currentContext: PContext;
     pendingContext: PContext;
-    nextcontextCoupon: Integer;
+    nextContextCoupon: Integer;
 
     changed: TObject;
 
-    procedure NotifyParticipants(canceled: Boolean);
+    procedure NotifyParticipants(contextCoupon: Integer; canceled: Boolean);
     function PollParticipants: TStrings;
     procedure TerminateAllParticipants;
 
     function CreateContext(participantCoupon: Integer): PContext;
-    procedure DestroyContext(context: PContext);
+    procedure DestroyContext(var context: PContext);
     function GetContext(contextCoupon: Integer): PContext;
     function GetCurrentcontextCoupon: Integer;
     procedure ValidatePendingContext(contextCoupon: Integer; participantCoupon: Integer);
@@ -197,12 +197,11 @@ begin
   then Throw('No participant found for coupon [pc#%d]', E_UNKNOWN_PARTICIPANT, [participantCoupon]);
 end;
 
-procedure TContextSession.NotifyParticipants(canceled: Boolean);
+procedure TContextSession.NotifyParticipants(contextCoupon: Integer; canceled: Boolean);
 var
   i: Integer;
   count: Integer;
   action: String;
-  contextCoupon: Integer;
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
@@ -210,9 +209,9 @@ begin
   then action := 'canceled'
   else action := 'committed';
 
+  Log(LOG_SEPARATOR);
   Log('Context change %s, notifying participants...', [action]);
   count := 0;
-  contextCoupon := pendingContext^.contextCoupon;
 
   for i := 0 To participants.Count - 1 Do
   begin
@@ -222,6 +221,7 @@ begin
     then begin
       count := count + 1;
       contextParticipant := participant^.contextParticipant;
+      LogActivity(participant, 'is being notified');
 
       if canceled
       then contextParticipant.ContextChangesCanceled(contextCoupon)
@@ -229,7 +229,9 @@ begin
     end;
   end;
 
+  Log(LOG_SEPARATOR);
   Log('Notified %d out of %d participant(s)', [count, participants.Count]);
+  Log(LOG_SEPARATOR);
 end;
 
 function TContextSession.PollParticipants: TStrings;
@@ -250,6 +252,7 @@ var
     reasons.Add(reason);
   end;
 begin
+  Log(LOG_SEPARATOR);
   Log('Polling participants...');
   count := 0;
 
@@ -279,7 +282,9 @@ begin
     end;
   end;
 
+  Log(LOG_SEPARATOR);
   Log('Polled %d out of %d participant(s)', [count, participants.Count]);
+  Log(LOG_SEPARATOR);
   Result := reasons;
 end;
 
@@ -340,13 +345,14 @@ begin
   Result := context;
 end;
 
-procedure TContextSession.DestroyContext(context: PContext);
+procedure TContextSession.DestroyContext(var context: PContext);
 begin
   if context <> nil
   then begin
     context^.contextItems.Destroy;
     context^.contextItems := nil;
     context^.participant := nil;
+    context := nil;
   end;
 end;
 
@@ -392,8 +398,8 @@ var
 begin
   ValidatePendingContext(contextCoupon, -1);
   MergeContexts;
-  LogActivity(pendingContext, 'ended context change');
   vote := PollParticipants;
+  LogActivity(pendingContext, 'ended context change');
   Result := ToVarArray(vote, RawText);
 end;
 
@@ -447,21 +453,20 @@ begin
   ValidatePendingContext(contextCoupon, -1);
   accept := AnsiLowerCase(decision) = 'accept';
 
-  NotifyParticipants(Not(accept));
-
   if accept
   then begin
     DestroyContext(currentContext);
     currentContext := pendingContext;
-    ClearChanged(currentContext^.contextItems);
     sessionForm.currentContext := currentContext;
-  end else begin
-    DestroyContext(pendingContext);
   end;
 
-  pendingContext := nil;
   sessionForm.pendingContext := nil;
-  LogActivity(currentContext, 'published changes decision: ' + decision);
+  NotifyParticipants(contextCoupon, Not(accept));
+  LogActivity(pendingContext, 'published changes decision: ' + decision);
+
+  if accept
+  then ClearChanged(currentContext^.contextItems)
+  else DestroyContext(pendingContext);
 end;
 
 procedure TContextSession.UndoContextChanges(contextCoupon: Integer);
@@ -469,7 +474,6 @@ begin
   ValidatePendingContext(contextCoupon, -1);
   LogActivity(pendingContext, 'is undoing context changes');
   DestroyContext(pendingContext);
-  pendingContext := nil;
   sessionForm.pendingContext := nil;
 end;
 

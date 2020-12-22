@@ -12,7 +12,7 @@ unit CCOW_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 12/21/2020 6:23:12 PM from Type Library described below.
+// File generated on 12/22/2020 11:23:06 AM from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: Y:\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator.tlb (1)
@@ -56,6 +56,7 @@ const
   IID_ISecureContextData: TGUID = '{6F530680-BC14-11D1-90B1-76C60D000000}';
   IID_IImplementationInformation: TGUID = '{41123600-6CE1-11D1-AB3F-E892F500000C}';
   CLASS_ContextManager: TGUID = '{E56E7071-E8FC-4D76-872E-10EDE51ED076}';
+  IID_IAuthenticationRepository: TGUID = '{12B28736-2895-11D2-BD6E-0060B0573ADC}';
 type
 
 // *********************************************************************//
@@ -79,6 +80,8 @@ type
   ISecureContextDataDisp = dispinterface;
   IImplementationInformation = interface;
   IImplementationInformationDisp = dispinterface;
+  IAuthenticationRepository = interface;
+  IAuthenticationRepositoryDisp = dispinterface;
 
 // *********************************************************************//
 // Declaration of CoClasses defined in Type Library                       
@@ -352,6 +355,44 @@ type
     property TargetOS: WideString readonly dispid 206;
     property TargetOSRev: WideString readonly dispid 207;
     property WhenInstalled: WideString readonly dispid 208;
+  end;
+
+// *********************************************************************//
+// Interface: IAuthenticationRepository
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {12B28736-2895-11D2-BD6E-0060B0573ADC}
+// *********************************************************************//
+  IAuthenticationRepository = interface(IDispatch)
+    ['{12B28736-2895-11D2-BD6E-0060B0573ADC}']
+    function Connect(const applicationName: WideString): Integer; safecall;
+    procedure Disconnect(bindingCoupon: Integer); safecall;
+    procedure SetAuthenticationData(coupon: Integer; const logonName: WideString; 
+                                    const dataFormat: WideString; const userData: WideString; 
+                                    const appSignature: WideString); safecall;
+    procedure DeleteAuthenticationData(coupon: Integer; const logonName: WideString; 
+                                       const dataFormat: WideString; const appSignature: WideString); safecall;
+    function GetAuthenticationData(coupon: Integer; const logonName: WideString; 
+                                   const dataType: WideString; const appSignature: WideString; 
+                                   var userData: WideString): WideString; safecall;
+  end;
+
+// *********************************************************************//
+// DispIntf:  IAuthenticationRepositoryDisp
+// Flags:     (4416) Dual OleAutomation Dispatchable
+// GUID:      {12B28736-2895-11D2-BD6E-0060B0573ADC}
+// *********************************************************************//
+  IAuthenticationRepositoryDisp = dispinterface
+    ['{12B28736-2895-11D2-BD6E-0060B0573ADC}']
+    function Connect(const applicationName: WideString): Integer; dispid 201;
+    procedure Disconnect(bindingCoupon: Integer); dispid 202;
+    procedure SetAuthenticationData(coupon: Integer; const logonName: WideString; 
+                                    const dataFormat: WideString; const userData: WideString; 
+                                    const appSignature: WideString); dispid 203;
+    procedure DeleteAuthenticationData(coupon: Integer; const logonName: WideString; 
+                                       const dataFormat: WideString; const appSignature: WideString); dispid 204;
+    function GetAuthenticationData(coupon: Integer; const logonName: WideString; 
+                                   const dataType: WideString; const appSignature: WideString; 
+                                   var userData: WideString): WideString; dispid 205;
   end;
 
 // *********************************************************************//

@@ -101,7 +101,7 @@ procedure TSessionForm.SetContextCaption(grp: TGroupBox; context: PContext);
 begin
   if context = nil
   then grp.Caption := grp.Hint
-  else grp.Caption := grp.Hint + ' (' + IntToStr(context^.contextCoupon) + ')';
+  else grp.Caption := Format('%s [cc#%d]', [grp.Hint, context^.contextCoupon]);
 end;
 
 procedure TSessionForm.FormClose(Sender: TObject; var Action: TCloseAction);

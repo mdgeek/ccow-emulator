@@ -405,6 +405,7 @@ begin
   Result := Null;
 end;
 
+
 initialization
   TAutoObjectFactory.Create(ComServer, TContextManager, Class_ContextManager,
     ciMultiInstance, tmApartment);
