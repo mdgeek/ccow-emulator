@@ -17,6 +17,8 @@ type
     property Code: HRESULT read FCode;
   end;
 
+  TParticipantCallback = procedure(participant: PParticipant);
+
   TContextSession = class
   private
     sessionId: Integer;
@@ -34,6 +36,7 @@ type
     procedure NotifyParticipants(contextCoupon: Integer; canceled: Boolean);
     function PollParticipants: TStrings;
     procedure TerminateAllParticipants;
+    function CloneParticipantList: TList;
 
     function CreateContext(participantCoupon: Integer): PContext;
     procedure DestroyContext(var context: PContext);
@@ -202,6 +205,7 @@ var
   i: Integer;
   count: Integer;
   action: String;
+  pList: TList;
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
@@ -212,10 +216,11 @@ begin
   Log(LOG_SEPARATOR);
   Log('Context change %s, notifying participants...', [action]);
   count := 0;
+  pList := CloneParticipantList;
 
-  for i := 0 To participants.Count - 1 Do
+  for i := 0 To pList.Count - 1 Do
   begin
-    participant := participants[i];
+    participant := pList[i];
 
     if Not(participant^.suspended)
     then begin
@@ -230,14 +235,16 @@ begin
   end;
 
   Log(LOG_SEPARATOR);
-  Log('Notified %d out of %d participant(s)', [count, participants.Count]);
+  Log('Notified %d out of %d participant(s)', [count, pList.Count]);
   Log(LOG_SEPARATOR);
+  pList.Free;
 end;
 
 function TContextSession.PollParticipants: TStrings;
 var
   i: Integer;
   count: Integer;
+  pList: TList;
   participant: PParticipant;
   contextParticipant: IContextParticipant;
   reason: WideString;
@@ -251,14 +258,20 @@ var
 
     reasons.Add(reason);
   end;
+
+  procedure Poll(participant: PParticipant);
+  begin
+  end;
+
 begin
   Log(LOG_SEPARATOR);
   Log('Polling participants...');
   count := 0;
+  pList := CloneParticipantList;
 
-  for i := 0 To participants.Count - 1 Do
+  for i := 0 To pList.Count - 1 Do
   begin
-    participant := participants[i];
+    participant := pList[i];
 
     if Not(participant^.suspended) and participant^.survey
       and (participant <> pendingContext^.participant)
@@ -283,8 +296,9 @@ begin
   end;
 
   Log(LOG_SEPARATOR);
-  Log('Polled %d out of %d participant(s)', [count, participants.Count]);
+  Log('Polled %d out of %d participant(s)', [count, pList.Count]);
   Log(LOG_SEPARATOR);
+  pList.Free;
   Result := reasons;
 end;
 
@@ -305,14 +319,16 @@ end;
 procedure TContextSession.TerminateAllParticipants;
 var
   i: Integer;
+  pList: TList;
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
   Log('Terminating all active participants...');
+  pList := CloneParticipantList;
 
-  for i := 0 to participants.Count - 1 do
+  for i := 0 to pList.Count - 1 do
   begin
-    participant := participants[i];
+    participant := pList[i];
     contextParticipant := participant^.contextParticipant;
     sessionForm.RemoveParticipant(participant);
     participant^.contextParticipant := nil;
@@ -327,6 +343,13 @@ begin
 
 
   participants.Clear;
+  pList.Free;
+end;
+
+function TContextSession.CloneParticipantList: TList;
+begin
+  Result := TList.Create;
+  Result.Assign(participants, laCopy);
 end;
 
 //************************** Context **************************/
@@ -349,9 +372,7 @@ procedure TContextSession.DestroyContext(var context: PContext);
 begin
   if context <> nil
   then begin
-    context^.contextItems.Destroy;
-    context^.contextItems := nil;
-    context^.participant := nil;
+    Dispose(context);
     context := nil;
   end;
 end;
