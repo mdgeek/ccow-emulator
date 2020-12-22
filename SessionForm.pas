@@ -22,6 +22,7 @@ type
     splitterTop: TSplitter;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormCreate(Sender: TObject);
 
   private
     procedure SetCurrentContext(context: PContext);
@@ -40,7 +41,12 @@ type
     procedure Log(text: String; params: array of const); overload;
   end;
 
+var
+  frmSession: TSessionForm;
+
 implementation
+
+uses MainForm;
 
 {$R *.dfm}
 
@@ -111,6 +117,13 @@ begin
     if MessageDlg('Closing this tab will terminate all active participants.  Are you sure?', mtWarning, [mbYes, mbCancel], 0) = mrCancel
     then CanClose := False;
   end;
+end;
+
+procedure TSessionForm.FormCreate(Sender: TObject);
+begin
+  grpCurrentContext.Width := frmMain.ClientWidth div 2;
+  grpActivityLog.Width := frmMain.ClientWidth div 3 * 2;
+  pnlTop.Height := frmMain.ClientHeight div 2;
 end;
 
 end.

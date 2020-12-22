@@ -5,7 +5,7 @@ uses
   Common in 'Common.pas',
   ContextSession in 'ContextSession.pas',
   CCOW_TLB in 'CCOW_TLB.pas',
-  SessionForm in 'SessionForm.pas',
+  SessionForm in 'SessionForm.pas' {frmSession},
   ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
   MainForm in 'MainForm.pas' {frmMain};
 

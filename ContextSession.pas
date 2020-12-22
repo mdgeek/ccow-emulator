@@ -6,8 +6,6 @@ uses
   CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows, SessionForm, Common;
 
 type
-  TSurveyDecision = (Decision_Accept, Decision_ConditionallyAccept, Decision_Unknown);
-
   TListComponent = (ValueComponent, NameComponent, BothComponents, RawText);
 
   TContextException = class(Exception)
@@ -89,7 +87,7 @@ type
     procedure Log(text: String; params: array of const); overload;
     procedure LogActivity(participant: PParticipant; activity: String); overload;
     procedure LogActivity(participantCoupon: Integer; activity: String); overload;
-    procedure LogTransaction(contextCoupon: Integer; activity: String);
+    procedure LogActivity(context: PContext; activity: String); overload;
 
   end;
 
@@ -121,7 +119,7 @@ begin
   sessionId := nextSessionId;
   sessionForm := frmMain.CreateSession(sessionId);
   sessionForm.OnDestroy := Self.SessionDestroy;
-  LOG_SEPARATOR := StringOfChar('-', 80) + '> %d';
+  LOG_SEPARATOR := '[%d]' + StringOfChar('-', 60);
   LogInvocation('TContextSession.Create');
   participants := TList.Create;
 
@@ -242,10 +240,17 @@ var
   contextParticipant: IContextParticipant;
   reason: WideString;
   response: WideString;
-  decision: TSurveyDecision;
+  reasons: TStrings;
+
+  procedure AddReason(reason: String);
+  begin
+    if reasons = nil
+    then reasons := TStringList.Create;
+
+    reasons.Add(reason);
+  end;
 begin
   Log('Polling participants...');
-  Result := nil;
   count := 0;
 
   for i := 0 To participants.Count - 1 Do
@@ -255,31 +260,27 @@ begin
     if Not(participant^.suspended) and participant^.survey
       and (participant^.participantCoupon <> pendingContext^.participantCoupon)
     then begin
-      decision := Decision_Unknown;
       count := count + 1;
       contextParticipant := participant^.contextParticipant;
-      LogActivity(participant, 'polled');
+      LogActivity(participant, 'is being polled');
       response := AnsiLowerCase(contextParticipant.ContextChangesPending(pendingContext^.contextCoupon, reason));
 
       if response = 'accept'
-      then decision := Decision_Accept
-      else if response = 'conditionally_accept'
-      then decision := Decision_ConditionallyAccept
-      else Throw('Unknown survey response: %s', E_ACCEPT_NOT_POSSIBLE, [response]);
-
-      LogActivity(participant, 'responded with: ' + reason);
-
-      if decision = Decision_ConditionallyAccept
       then begin
-        if Result = nil
-        then Result := TStringList.Create;
-
-        Result.Add(reason);
+         LogActivity(participant, 'accepted pending change');
+      end else if response = 'conditionally_accept'
+      then begin
+        LogActivity(participant, 'conditionally accepted pending change: ' + reason);
+        AddReason(reason);
+      end else begin
+       LogActivity(participant, 'returned an unrecognized response: ' + response);
+       AddReason('unrecognized response');
       end;
     end;
   end;
 
   Log('Polled %d out of %d participant(s)', [count, participants.Count]);
+  Result := reasons;
 end;
 
 procedure TContextSession.AddParticipant(participant: PParticipant);
@@ -378,8 +379,7 @@ begin
 
   pendingContext := CreateContext(participantCoupon);
   sessionForm.pendingContext := nil;
-  LogActivity(participant,
-    'started context change (' + IntToStr(pendingContext^.contextCoupon) + ')');
+  LogActivity(pendingContext, 'started context change');
   Result := pendingContext^.contextCoupon;
 end;
 
@@ -389,6 +389,7 @@ var
 begin
   ValidatePendingContext(contextCoupon, -1);
   MergeContexts;
+  LogActivity(pendingContext, 'ended context change');
   vote := PollParticipants;
   Result := ToVarArray(vote, RawText);
 end;
@@ -457,13 +458,13 @@ begin
 
   pendingContext := nil;
   sessionForm.pendingContext := nil;
-  LogTransaction(contextCoupon, 'published changes decision: ' + decision);
+  LogActivity(currentContext, 'published changes decision: ' + decision);
 end;
 
 procedure TContextSession.UndoContextChanges(contextCoupon: Integer);
 begin
   ValidatePendingContext(contextCoupon, -1);
-  LogTransaction(contextCoupon, 'undoing context changes');
+  LogActivity(pendingContext, 'is undoing context changes');
   DestroyContext(pendingContext);
   pendingContext := nil;
   sessionForm.pendingContext := nil;
@@ -545,6 +546,15 @@ var
     j := j + 1;
   end;
 
+  procedure AddPair(name: String; value: String);
+  begin
+    Log('   %s=%s', [name, value]);
+    varArray[j] := name;
+    j := j + 1;
+    varArray[j] := value;
+    j := j + 1;
+  end;
+
 begin
   if (items = nil) or (items.Count = 0)
   then begin
@@ -566,11 +576,7 @@ begin
       ValueComponent: AddItem(items.ValueFromIndex[i]);
       NameComponent: AddItem(items.Names[i]);
       RawText: AddItem(items[i]);
-      BothComponents:
-      begin
-        AddItem(items.Names[i]);
-        AddItem(items.ValueFromIndex[i]);
-      end;
+      BothComponents: AddPair(items.Names[i], items.ValueFromIndex[i]);
       else Throw('Illegal string list component', E_FAIL);
     end;
   end;
@@ -665,9 +671,13 @@ begin
   LogActivity(FindParticipant(ParticipantCoupon), Activity);
 end;
 
-procedure TContextSession.LogTransaction(contextCoupon: Integer; activity: String);
+procedure TContextSession.LogActivity(context: PContext; activity: String);
+var
+  participant: PParticipant;
 begin
-  Log('Transaction (%d) %s', [contextCoupon, activity]);
+  participant := FindParticipant(context^.participantCoupon);
+  Log('%s(%d) %s (tx#%d)', [participant^.title, participant^.participantCoupon,
+    activity, context^.contextCoupon]);
 end;
 
 procedure TContextSession.LogInvocation(method: String);

@@ -12,7 +12,7 @@ unit CCOW_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 12/21/2020 2:53:18 PM from Type Library described below.
+// File generated on 12/21/2020 6:23:12 PM from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: Y:\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator.tlb (1)
