@@ -17,8 +17,6 @@ type
     property Code: HRESULT read FCode;
   end;
 
-  TParticipantCallback = procedure(participant: PParticipant);
-
   TContextSession = class
   private
     sessionId: Integer;
@@ -257,10 +255,6 @@ var
     then reasons := TStringList.Create;
 
     reasons.Add(reason);
-  end;
-
-  procedure Poll(participant: PParticipant);
-  begin
   end;
 
 begin
