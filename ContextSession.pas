@@ -31,6 +31,7 @@ type
 
     changed: TObject;
 
+    function FindParticipant(participantCoupon: Integer): PParticipant;
     procedure NotifyParticipants(contextCoupon: Integer; canceled: Boolean);
     function PollParticipants: TStrings;
     procedure TerminateAllParticipants;
@@ -49,10 +50,10 @@ type
     procedure ClearChanged(items: TStrings);
     function ExtractItems(src: TStrings; itemName: String; onlyChanged: Boolean): TStrings;
 
-    procedure Throw(text: String; code: HRESULT); overload;
-   procedure Throw(text: String; code: HRESULT; params: array of const); overload;
-
     procedure SessionDestroy(Sender: TObject);
+
+    procedure Throw(text: String; code: HRESULT); overload;
+    procedure Throw(text: String; code: HRESULT; params: array of const); overload;
 
   public
     constructor Create;
@@ -64,7 +65,6 @@ type
     procedure LogException(e: Exception);
     procedure LogInvocation(method: String);
 
-    function FindParticipant(participantCoupon: Integer): PParticipant;
     function CreateParticipant(contextParticipant: IDispatch;
       title: WideString; survey, wait: WordBool): Integer;
     procedure DestroyParticipant(participantCoupon: Integer);
@@ -83,6 +83,10 @@ type
       contextCoupon: Integer): OleVariant;
     procedure SetItemValues(participantCoupon: Integer;
       itemNames, itemValues: OleVariant; contextCoupon: Integer);
+
+    function GetSubjectsOfInterest(participantCoupon: Integer): OleVariant;
+    procedure ClearFilter(participantCoupon: Integer);
+    procedure SetSubjectsOfInterest(participantCoupon: Integer; subjectNames: OleVariant);
 
     procedure Log(text: String); overload;
     procedure Log(text: String; params: array of const); overload;
@@ -107,6 +111,7 @@ const
   E_INVALID_CONTEXT_COUPON = HRESULT($80000203);
   E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
+  E_FILTER_NOT_SET = HRESULT($80000225);
 
   LOG_SEPARATOR = '------------------------------------------------------------';
 
@@ -544,10 +549,10 @@ begin
       items.ValueFromIndex[j] := value;
       items.Objects[j] := Changed;
     end else begin
-      items.AddObject(name + '=' + value, Changed);
+      j := items.AddObject(name + '=' + value, Changed);
     end;
 
-    Log('  %s=%s', [name, value]);
+    Log('  %s', [items[j]]);
   end;
 
   sessionForm.pendingContext := pendingContext;
@@ -564,6 +569,28 @@ begin
   if (participantCoupon > -1) and (participantCoupon <> pendingContext^.participant.participantCoupon)
   then Throw('Participant [pc#%d] did not initiate this transaction [cc#%d]',
     E_INVALID_CONTEXT_COUPON, [participantCoupon, contextCoupon]);
+end;
+
+//************************** Context Filters **************************/
+
+function TContextSession.GetSubjectsOfInterest(
+  participantCoupon: Integer): OleVariant;
+begin
+  Result := FindParticipant(participantCoupon)^.filter;
+
+  if Result = Null
+  then Throw('A filter has not been set', E_FILTER_NOT_SET);
+end;
+
+procedure TContextSession.ClearFilter(participantCoupon: Integer);
+begin
+  FindParticipant(participantCoupon)^.filter := Null;
+end;
+
+procedure TContextSession.SetSubjectsOfInterest(participantCoupon: Integer;
+  subjectNames: OleVariant);
+begin
+  FindParticipant(participantCoupon)^.filter := subjectNames;
 end;
 
 //************************** Utility **************************/

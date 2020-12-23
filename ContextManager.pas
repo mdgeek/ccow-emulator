@@ -322,20 +322,20 @@ function TContextManager.IContextFilter_GetSubjectsOfInterest(
   participantCoupon: Integer): OleVariant;
 begin
   session.LogInvocation('IContextFilter.GetSubjectsOfInterest');
-  Result := session.FindParticipant(participantCoupon)^.filter;
+  Result := session.GetSubjectsOfInterest(participantCoupon);
 end;
 
 procedure TContextManager.IContextFilter_ClearFilter(participantCoupon: Integer);
 begin
   session.LogInvocation('IContextFilter.ClearFilter');
-  session.FindParticipant(participantCoupon)^.filter := Null;
+  session.ClearFilter(participantCoupon);
 end;
 
 procedure TContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon: Integer;
   subjectNames: OleVariant);
 begin
   session.LogInvocation('IContextFilter.SetSubjectsOfInterest');
-  session.FindParticipant(participantCoupon)^.filter := subjectNames;
+  session.SetSubjectsOfInterest(participantCoupon, subjectNames);
 end;
 
 //************************** IContextSession **************************/
