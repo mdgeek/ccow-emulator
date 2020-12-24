@@ -97,6 +97,7 @@ type
     procedure LogActivity(participantCoupon: Integer; activity: String); overload;
     procedure LogActivity(context: PContext; activity: String); overload;
     procedure LogException(e: Exception);
+    procedure LogSeparator;
     procedure LogStart(method: String);
     procedure LogEnd();
 
@@ -171,6 +172,7 @@ begin
   participant^.wait := wait;
   participant^.suspended := False;
   participant^.participantCoupon := nextParticipantCoupon;
+  participant^.filter := Null;
   participants.add(participant);
   sessionForm.AddParticipant(participant);
   LogActivity(participant, 'joined the common context');
@@ -243,11 +245,24 @@ begin
     then begin
       count := count + 1;
       contextParticipant := participant^.contextParticipant;
-      LogActivity(participant, 'is being notified');
 
-      if canceled
-      then contextParticipant.ContextChangesCanceled(contextCoupon)
-      else contextParticipant.ContextChangesAccepted(contextCoupon);
+      Try
+        if canceled
+        then begin
+          LogStart('IContextParticipant.ContextChangesCanceled');
+          LogActivity(participant, 'is being notified');
+          contextParticipant.ContextChangesCanceled(contextCoupon);
+        end else begin
+          LogStart('IContextParticipant.ContextChangesAccepted');
+          LogActivity(participant, 'is being notified');
+          contextParticipant.ContextChangesAccepted(contextCoupon);
+        end;
+      Except
+        on e: Exception do
+          LogException(e);
+      end;
+
+      LogEnd;
     end;
   end;
 
@@ -288,8 +303,19 @@ begin
     then begin
       count := count + 1;
       contextParticipant := participant^.contextParticipant;
+      LogStart('IContextParticipant.ContextChangesPending');
       LogActivity(participant, 'is being polled');
-      response := AnsiLowerCase(contextParticipant.ContextChangesPending(pendingContext^.contextCoupon, reason));
+
+      Try
+        response := AnsiLowerCase(contextParticipant.ContextChangesPending(pendingContext^.contextCoupon, reason));
+      Except
+        on e: Exception do begin
+          response := e.Message;
+          reason := e.Message;
+        end;
+      end;
+      
+      LogEnd;
 
       if response = 'accept'
       then begin
@@ -300,7 +326,7 @@ begin
         AddReason(reason);
       end else begin
        LogActivity(participant, 'returned an unrecognized response: ' + response);
-       AddReason('unrecognized response');
+       AddReason(reason);
       end;
     end;
   end;
@@ -428,7 +454,6 @@ begin
   ValidatePendingContext(contextCoupon, -1);
   MergeContexts;
   vote := PollParticipants;
-  LogActivity(pendingContext, 'ended context change');
   Result := ToVarArray(vote, RawText);
 end;
 
@@ -545,7 +570,7 @@ var
   value: String;
 begin
   ValidatePendingContext(contextCoupon, participantCoupon);
-  LogActivity(participantCoupon, 'is setting item values');
+  LogActivity(pendingContext, 'is setting item values');
   items := pendingContext^.contextItems;
 
   for i := VarArrayLowBound(itemNames, 1) to VarArrayHighBound(itemNames, 1) do begin
@@ -578,6 +603,8 @@ begin
   if (participantCoupon > -1) and (participantCoupon <> pendingContext^.participant.participantCoupon)
   then Throw('Participant [pc#%d] did not initiate this transaction [cc#%d]',
     E_INVALID_CONTEXT_COUPON, [participantCoupon, contextCoupon]);
+
+  Log('Pending context coupon [cc#%d] is valid', [contextCoupon]);
 end;
 
 //************************** Context Filters **************************/
@@ -707,7 +734,7 @@ end;
 
 function TContextSession.LogIndent: String;
 begin
-  Result := RightStr(LOG_INDENT, (logStack.Count - 1) * 2);
+  Result := RightStr(LOG_INDENT, logStack.Count * 2);
 end;
 
 procedure TContextSession.Log(text: String);
@@ -744,9 +771,8 @@ end;
 
 procedure TContextSession.LogStart(method: String);
 begin
-  logStack.Add(method);
-  Log(LOG_SEPARATOR);
   Log('Entering %s [thread#%d]', [method, GetCurrentThreadId]);
+  logStack.Add(method);
 end;
 
 procedure TContextSession.LogEnd();
@@ -759,11 +785,16 @@ begin
   if i >= 0
   then begin
     method := logStack[i];
-    Log('Exited %s', [method]);
-    Log(LOG_SEPARATOR);
     logStack.Delete(i);
+    Log('Exited %s', [method]);
   end else LogException(Exception.Create('Log end past end of stack'));
 
+end;
+
+procedure TContextSession.LogSeparator;
+begin
+  if logStack.Count > 0
+  then Log(LOG_SEPARATOR);
 end;
 
 procedure TContextSession.LogException(e: Exception);
