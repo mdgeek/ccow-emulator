@@ -21,6 +21,7 @@ type
   private
     sessionId: Integer;
     sessionForm: TSessionForm;
+    logStack: TStrings;
 
     participants: TList;
     nextparticipantCoupon: Integer;
@@ -52,18 +53,20 @@ type
 
     procedure SessionDestroy(Sender: TObject);
 
+    function LogIndent: String;
+
     procedure Throw(text: String; code: HRESULT); overload;
     procedure Throw(text: String; code: HRESULT; params: array of const); overload;
 
   public
     constructor Create;
+    procedure SessionActivate(participantCoupon: Integer; cmToActivate: IDispatch;
+      nonce, appSignature: WideString);
+
 
     property id: Integer read sessionId;
 
     procedure NotImplemented(message: String);
-
-    procedure LogException(e: Exception);
-    procedure LogInvocation(method: String);
 
     function CreateParticipant(contextParticipant: IDispatch;
       title: WideString; survey, wait: WordBool): Integer;
@@ -93,6 +96,9 @@ type
     procedure LogActivity(participant: PParticipant; activity: String); overload;
     procedure LogActivity(participantCoupon: Integer; activity: String); overload;
     procedure LogActivity(context: PContext; activity: String); overload;
+    procedure LogException(e: Exception);
+    procedure LogStart(method: String);
+    procedure LogEnd();
 
   end;
 
@@ -101,7 +107,7 @@ var
 
 implementation
 
-uses MainForm;
+uses MainForm, ContextManager;
 
 const
   E_FAIL = HRESULT($80004005);
@@ -114,6 +120,7 @@ const
   E_FILTER_NOT_SET = HRESULT($80000225);
 
   LOG_SEPARATOR = '------------------------------------------------------------';
+  LOG_INDENT = '> > > > > > > > > > > > > > > > > > > > ';
 
 var
   nextSessionId: Integer;
@@ -126,7 +133,8 @@ begin
   sessionId := nextSessionId;
   sessionForm := frmMain.CreateSession(sessionId);
   sessionForm.OnDestroy := Self.SessionDestroy;
-  LogInvocation('TContextSession.Create');
+  logStack := TStringList.Create;
+  LogStart('TContextSession.Create');
   participants := TList.Create;
 
   currentContext := nil;
@@ -135,10 +143,17 @@ begin
   changed := TObject.Create;
 end;
 
+procedure TContextSession.SessionActivate(participantCoupon: Integer;
+  cmToActivate: IDispatch; nonce, appSignature: WideString);
+begin
+end;
+
 procedure TContextSession.SessionDestroy(Sender: TObject);
 begin
-  LogInvocation('TContextSession.SessionDestroy');
+  LogStart('TContextSession.SessionDestroy');
   TerminateAllParticipants;
+  LogEnd;
+  LogEnd;
 end;
 
 //************************** Participant **************************/
@@ -216,7 +231,6 @@ begin
   then action := 'canceled'
   else action := 'committed';
 
-  Log(LOG_SEPARATOR);
   Log('Context change %s, notifying participants...', [action]);
   count := 0;
   pList := CloneParticipantList;
@@ -237,9 +251,7 @@ begin
     end;
   end;
 
-  Log(LOG_SEPARATOR);
   Log('Notified %d out of %d participant(s)', [count, pList.Count]);
-  Log(LOG_SEPARATOR);
   pList.Free;
 end;
 
@@ -263,7 +275,6 @@ var
   end;
 
 begin
-  Log(LOG_SEPARATOR);
   Log('Polling participants...');
   count := 0;
   pList := CloneParticipantList;
@@ -294,9 +305,7 @@ begin
     end;
   end;
 
-  Log(LOG_SEPARATOR);
   Log('Polled %d out of %d participant(s)', [count, pList.Count]);
-  Log(LOG_SEPARATOR);
   pList.Free;
   Result := reasons;
 end;
@@ -696,14 +705,19 @@ end;
 
 //************************** Logging **************************/
 
+function TContextSession.LogIndent: String;
+begin
+  Result := RightStr(LOG_INDENT, (logStack.Count - 1) * 2);
+end;
+
 procedure TContextSession.Log(text: String);
 begin
-  sessionForm.Log(text);
+  sessionForm.Log(LogIndent + text);
 end;
 
 procedure TContextSession.Log(text: String; params: array of const);
 begin
-  sessionForm.Log(text, params);
+  sessionForm.Log(LogIndent + text, params);
 end;
 
 procedure TContextSession.LogActivity(participant: PParticipant; activity: String);
@@ -728,10 +742,28 @@ begin
     activity, context^.contextCoupon]);
 end;
 
-procedure TContextSession.LogInvocation(method: String);
+procedure TContextSession.LogStart(method: String);
 begin
+  logStack.Add(method);
   Log(LOG_SEPARATOR);
-  Log('Invoking method %s [thread#%d]', [method, GetCurrentThreadId]);
+  Log('Entering %s [thread#%d]', [method, GetCurrentThreadId]);
+end;
+
+procedure TContextSession.LogEnd();
+var
+  method: String;
+  i: Integer;
+begin
+  i := logStack.Count - 1;
+
+  if i >= 0
+  then begin
+    method := logStack[i];
+    Log('Exited %s', [method]);
+    Log(LOG_SEPARATOR);
+    logStack.Delete(i);
+  end else LogException(Exception.Create('Log end past end of stack'));
+
 end;
 
 procedure TContextSession.LogException(e: Exception);
