@@ -35,6 +35,8 @@ type
     function FindParticipant(participantCoupon: Integer): PParticipant;
     procedure NotifyParticipants(contextCoupon: Integer; canceled: Boolean);
     function PollParticipants: TStrings;
+    procedure AddParticipant(participant: PParticipant);
+    function RemoveParticipant(participantCoupon: Integer): PParticipant;
     procedure TerminateAllParticipants;
     function CloneParticipantList: TList;
 
@@ -72,8 +74,6 @@ type
       title: WideString; survey, wait: WordBool): Integer;
     procedure DestroyParticipant(participantCoupon: Integer);
     procedure SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
-    procedure AddParticipant(participant: PParticipant);
-    function RemoveParticipant(participantCoupon: Integer): PParticipant;
 
     property CurrentContextCoupon: Integer read GetCurrentContextCoupon;
     function StartContextChanges(participantCoupon: Integer): Integer;
@@ -97,7 +97,6 @@ type
     procedure LogActivity(participantCoupon: Integer; activity: String); overload;
     procedure LogActivity(context: PContext; activity: String); overload;
     procedure LogException(e: Exception);
-    procedure LogSeparator;
     procedure LogStart(method: String);
     procedure LogEnd();
 
@@ -120,7 +119,6 @@ const
   E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
   E_FILTER_NOT_SET = HRESULT($80000225);
 
-  LOG_SEPARATOR = '------------------------------------------------------------';
   LOG_INDENT = '> > > > > > > > > > > > > > > > > > > > ';
 
 var
@@ -128,6 +126,10 @@ var
 
 //************************** Lifecycle **************************/
 
+{
+  Creates a new context session.  A default session is created during
+  application startup.  This is typically all that is needed.
+}
 constructor TContextSession.Create;
 begin
   nextSessionId := nextSessionId + 1;
@@ -144,11 +146,24 @@ begin
   changed := TObject.Create;
 end;
 
+{
+  Activates a context session for the given participant.  Essentially moves
+  a participant from its current session to another.
+}
 procedure TContextSession.SessionActivate(participantCoupon: Integer;
   cmToActivate: IDispatch; nonce, appSignature: WideString);
+  var
+    contextSession: TContextSession;
+    participant: PParticipant;
 begin
+  contextSession := TContextSession(cmToActivate);
+  participant := RemoveParticipant(participantCoupon);
+  contextSession.AddParticipant(participant);
 end;
 
+{
+  Destroys the session, terminating any active participants.
+}
 procedure TContextSession.SessionDestroy(Sender: TObject);
 begin
   LogStart('TContextSession.SessionDestroy');
@@ -158,9 +173,12 @@ begin
 end;
 
 //************************** Participant **************************/
-
-function TContextSession.CreateParticipant(
-  contextParticipant: IDispatch; title: WideString; survey, wait: WordBool): Integer;
+{
+  Creates a new participant record.  The record is added to the list of
+  active participants.  The newly assigned participant coupon is returned.
+}
+function TContextSession.CreateParticipant(contextParticipant: IDispatch;
+  title: WideString; survey, wait: WordBool): Integer;
 var
   participant: PParticipant;
 begin
@@ -173,23 +191,30 @@ begin
   participant^.suspended := False;
   participant^.participantCoupon := nextParticipantCoupon;
   participant^.filter := Null;
-  participants.add(participant);
+  AddParticipant(participant);
   sessionForm.AddParticipant(participant);
   LogActivity(participant, 'joined the common context');
   Result := nextParticipantCoupon;
 end;
 
+{
+  Destroys the participant record, removing it from the list of active
+  participants.
+}
 procedure TContextSession.DestroyParticipant(participantCoupon: Integer);
 var
   participant: PParticipant;
 begin
-  participant := FindParticipant(participantCoupon);
+  participant := RemoveParticipant(participantCoupon);
   LogActivity(participant, 'left the common context');
   sessionForm.RemoveParticipant(participant);
   participant^.contextParticipant := nil;
-  participants.Remove(participant);
+  Dispose(participant);
 end;
 
+{
+  Suspends or resumes participation in the common context.
+}
 procedure TContextSession.SuspendParticipant(participantCoupon: Integer; suspend: Boolean);
 var
   participant: PParticipant;
@@ -198,6 +223,10 @@ begin
   participant^.suspended := suspend;
 end;
 
+{
+  Returns the record of the active participant associated with the given
+  participant coupon. If one is not found, an exception is raised.
+}
 function TContextSession.FindParticipant(participantCoupon: Integer): PParticipant;
 var
   i: Integer;
@@ -220,6 +249,9 @@ begin
   then Throw('No participant found for coupon [pc#%d]', E_UNKNOWN_PARTICIPANT, [participantCoupon]);
 end;
 
+{
+  Notifies all active participants of the context change decision.
+}
 procedure TContextSession.NotifyParticipants(contextCoupon: Integer; canceled: Boolean);
 var
   i: Integer;
@@ -270,6 +302,11 @@ begin
   pList.Free;
 end;
 
+{
+  Polls all active participants for consent to change the context.  Returns
+  a list of reasons for dissent, if any, provided by participants.  If all
+  participants assent, nil will be returned.
+}
 function TContextSession.PollParticipants: TStrings;
 var
   i: Integer;
@@ -336,11 +373,17 @@ begin
   Result := reasons;
 end;
 
+{
+  Adds a participant record to the list of active participants.
+}
 procedure TContextSession.AddParticipant(participant: PParticipant);
 begin
   participants.Add(participant);
 end;
 
+{
+  Removes a participant record from the list of active participants.
+}
 function TContextSession.RemoveParticipant(participantCoupon: Integer): PParticipant;
 var
   participant: PParticipant;
@@ -350,6 +393,9 @@ begin
   Result := participant;
 end;
 
+{
+  Terminates context participation for all active participants.
+}
 procedure TContextSession.TerminateAllParticipants;
 var
   i: Integer;
@@ -380,6 +426,10 @@ begin
   pList.Free;
 end;
 
+{
+  Returns a clone of the active participant list.  This is used for iteration
+  in case the original list is modified during the iteration loop.
+}
 function TContextSession.CloneParticipantList: TList;
 begin
   Result := TList.Create;
@@ -789,12 +839,6 @@ begin
     Log('Exited %s', [method]);
   end else LogException(Exception.Create('Log end past end of stack'));
 
-end;
-
-procedure TContextSession.LogSeparator;
-begin
-  if logStack.Count > 0
-  then Log(LOG_SEPARATOR);
 end;
 
 procedure TContextSession.LogException(e: Exception);
