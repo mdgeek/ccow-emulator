@@ -770,6 +770,7 @@ end;
 function TContextSession.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
 var
   varArray: Variant;
+  varType: Word;
   i, j: Integer;
   upper: Integer;
 
@@ -790,9 +791,13 @@ var
   end;
 
 begin
+  if which = BothComponents
+  then varType := varVariant
+  else varType := varOleStr;
+
   if (items = nil) or (items.Count = 0)
   then begin
-    Result := VarArrayCreate([0, -1], varOleStr);
+    Result := VarArrayCreate([0, -1], varType);
     Exit;
   end;
 
@@ -801,7 +806,7 @@ begin
   if which = BothComponents
   then upper := upper * 2;
 
-  varArray := VarArrayCreate([0, upper - 1], varOleStr);
+  varArray := VarArrayCreate([0, upper - 1], varType);
   j := 0;
 
   for i := 0 to items.Count - 1 do
