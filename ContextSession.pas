@@ -610,12 +610,13 @@ begin
   then begin
     DestroyContext(currentContext);
     currentContext := pendingContext;
+    pendingContext := nil;
     sessionForm.currentContext := currentContext;
+    sessionForm.pendingContext := nil;
   end;
 
-  sessionForm.pendingContext := nil;
   NotifyParticipants(contextCoupon, Not(accept));
-  LogActivity(pendingContext, 'published changes decision: ' + decision);
+  LogActivity(getContext(contextCoupon), 'published changes decision: ' + decision);
 
   if accept
   then ClearChanged(currentContext^.contextItems)
