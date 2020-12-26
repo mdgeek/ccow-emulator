@@ -6,8 +6,18 @@ uses
   CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows, SessionForm, Common;
 
 type
-  TListComponent = (ValueComponent, NameComponent, BothComponents, RawText);
+  {
+    Specifies which component of a string list item is to be copied.
+  }
+  TListComponent = (
+    ValueComponent,   // The value component of a name/value pair.
+    NameComponent,    // The name component of a name/value pair.
+    BothComponents,   // Both the name and value component of a name/value pair.
+    RawText);         // The raw text value for the item.
 
+  {
+    An exception that includes a result code.
+  }
   TContextException = class(Exception)
   private
     FCode: HRESULT;
@@ -17,6 +27,11 @@ type
     property Code: HRESULT read FCode;
   end;
 
+  {
+    A context session.  Each context session maintains its own current and pending
+    contexts and a list of participants.  A new session form is created for each
+    session.
+  }
   TContextSession = class
   private
     sessionId: Integer;
@@ -173,6 +188,7 @@ begin
 end;
 
 //************************** Participant **************************/
+
 {
   Creates a new participant record.  The record is added to the list of
   active participants.  The newly assigned participant coupon is returned.
@@ -438,6 +454,9 @@ end;
 
 //************************** Context **************************/
 
+{
+  Creates a new context record for the specified participant.
+}
 function TContextSession.CreateContext(participantCoupon: Integer): PContext;
 var
   context: PContext;
@@ -452,6 +471,9 @@ begin
   Result := context;
 end;
 
+{
+  Destroys a context record.
+}
 procedure TContextSession.DestroyContext(var context: PContext);
 begin
   if context <> nil
@@ -461,6 +483,11 @@ begin
   end;
 end;
 
+{
+  Returns the context record corresponding to the specified context coupon.
+  If the context coupon does not correspond to either the current or the pending
+  context, and exception is raised.
+}
 function TContextSession.GetContext(contextCoupon: Integer): PContext;
 begin
   if (currentContext <> nil) and (currentContext^.contextCoupon = contextCoupon)
@@ -471,6 +498,10 @@ begin
     E_INVALID_CONTEXT_COUPON, [contextCoupon]);
 end;
 
+{
+  Returns the context coupon for the current context.  If a context has not yet
+  been set for this session, zero is returned.
+}
 function TContextSession.GetCurrentcontextCoupon: Integer;
 begin
   if currentContext = nil
@@ -479,6 +510,11 @@ begin
 
 end;
 
+{
+  Initiates a context change on behalf of the specified participant.  If a
+  context change transaction is already active, an exception is raised.
+  Returns the coupon for the newly created pending context.
+}
 function TContextSession.StartContextChanges(participantCoupon: Integer): Integer;
 var
   participant: PParticipant;
@@ -497,6 +533,11 @@ begin
   Result := pendingContext^.contextCoupon;
 end;
 
+{
+  Ends the pending context change and polls active participants for their
+  assent to the change.  Returns an array of responses for each dissenting
+  participant.  If no participant dissents, return an empty array.
+}
 function TContextSession.EndContextChanges(contextCoupon: Integer): OleVariant;
 var
   vote: TStrings;
@@ -507,6 +548,10 @@ begin
   Result := ToVarArray(vote, RawText);
 end;
 
+{
+  Backfills the pending context with items from the current context, excluding
+  items belonging to subjects already present in the pending context.
+}
 procedure TContextSession.MergeContexts;
 var
   pending: TStrings;
@@ -550,6 +595,10 @@ begin
   end;
 end;
 
+{
+  Commits or rolls back the pending context and notifies active participants
+  of the decision.
+}
 procedure TContextSession.PublishChangesDecision(contextCoupon: Integer; decision: WideString);
 var
   accept: Boolean;
@@ -573,6 +622,9 @@ begin
   else DestroyContext(pendingContext);
 end;
 
+{
+  Destroys the pending context.
+}
 procedure TContextSession.UndoContextChanges(contextCoupon: Integer);
 begin
   ValidatePendingContext(contextCoupon, -1);
@@ -581,11 +633,21 @@ begin
   sessionForm.pendingContext := nil;
 end;
 
+{
+  Returns item names from the specified context.  If the context coupon does
+  not correspond to the current or pending context, an exception is raised.
+}
 function TContextSession.GetItemNames(contextCoupon: Integer): OleVariant;
 begin
   Result := ToVarArray(GetContext(contextCoupon)^.contextItems, NameComponent);
 end;
 
+{
+  Returns item values for the specified item names from the specified context.
+  If the context coupon does not correspond to the current or pending context,
+  an exception is raised.  Results are returned in an array of alternating
+  item names and values.
+}
 function TContextSession.GetItemValues(participantCoupon: Integer;
   itemNames: OleVariant; onlyChanges: WordBool; contextCoupon: Integer): OleVariant;
 var
@@ -611,6 +673,11 @@ begin
   Result := ToVarArray(matches, BothComponents);
 end;
 
+{
+  Sets item values for the specified item names from the specified context.
+  If the context coupon does not correspond to the current or pending context,
+  an exception is raised.
+}
 procedure TContextSession.SetItemValues(participantCoupon: Integer;
   itemNames, itemValues: OleVariant; contextCoupon: Integer);
 var
@@ -642,6 +709,13 @@ begin
   sessionForm.pendingContext := pendingContext;
 end;
 
+{
+  Validates a pending context, raising an exception if any of the following holds true:
+    - No pending context exists.
+    - The pending context does not correspond to the specified context coupon.
+    - If a participant coupon is specified (i.e., is a positive integer) and
+      does not correspond to the participant that initiated the pending context.
+}
 procedure TContextSession.ValidatePendingContext(contextCoupon: Integer; participantCoupon: Integer);
 begin
   if pendingContext = nil
@@ -659,8 +733,11 @@ end;
 
 //************************** Context Filters **************************/
 
-function TContextSession.GetSubjectsOfInterest(
-  participantCoupon: Integer): OleVariant;
+{
+  Returns subject names from the current filter, raising an exception if no
+  filter has been set.
+}
+function TContextSession.GetSubjectsOfInterest(participantCoupon: Integer): OleVariant;
 begin
   Result := FindParticipant(participantCoupon)^.filter;
 
@@ -668,19 +745,28 @@ begin
   then Throw('A filter has not been set', E_FILTER_NOT_SET);
 end;
 
+{
+  Clears the current filter.
+}
 procedure TContextSession.ClearFilter(participantCoupon: Integer);
 begin
   FindParticipant(participantCoupon)^.filter := Null;
 end;
 
-procedure TContextSession.SetSubjectsOfInterest(participantCoupon: Integer;
-  subjectNames: OleVariant);
+{
+  Sets subject names for the participant's filter.
+}
+procedure TContextSession.SetSubjectsOfInterest(participantCoupon: Integer; subjectNames: OleVariant);
 begin
   FindParticipant(participantCoupon)^.filter := subjectNames;
 end;
 
 //************************** Utility **************************/
 
+{
+  Converts a string list to a variant array.  The 'which' parameter determines
+  how the string list entries are returned.
+}
 function TContextSession.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
 var
   varArray: Variant;
@@ -732,6 +818,9 @@ begin
   Result := varArray;
 end;
 
+{
+  Converts a variant array to a string list.
+}
 function TContextSession.FromVarArray(varArray: OleVariant): TStrings;
 var
   i: Integer;
@@ -742,6 +831,9 @@ begin
     Result.Add(VarToStr(varArray[i]));
 end;
 
+{
+  Clears the changed flag from all items in a string list.
+}
 procedure TContextSession.ClearChanged(items: TStrings);
 var
   i: Integer;
@@ -750,8 +842,13 @@ begin
     items.Objects[i] := nil;
 end;
 
-function TContextSession.ExtractItems(src: TStrings; itemName: String;
-  onlyChanged: Boolean): TStrings;
+{
+  Returns a list of all items in a string list that match the specified item
+  name.  The item name may contain a wildcard (i.e., terminated with an
+  asterisk).  If 'onlyChanged' is true, then only matching items that are
+  marked as having changed are included.
+}
+function TContextSession.ExtractItems(src: TStrings; itemName: String; onlyChanged: Boolean): TStrings;
 var
   i: Integer;
 
@@ -782,21 +879,33 @@ end;
 
 //************************** Logging **************************/
 
+{
+  Returns a prefix string for the current indent level.
+}
 function TContextSession.LogIndent: String;
 begin
   Result := RightStr(LOG_INDENT, logStack.Count * 2);
 end;
 
+{
+  Logs text to the session form's log window.
+}
 procedure TContextSession.Log(text: String);
 begin
   sessionForm.Log(LogIndent + text);
 end;
 
+{
+  Logs parameterized text to the session form's log window.
+}
 procedure TContextSession.Log(text: String; params: array of const);
 begin
   sessionForm.Log(LogIndent + text, params);
 end;
 
+{
+  Logs a participant activity.
+}
 procedure TContextSession.LogActivity(participant: PParticipant; activity: String);
 begin
   if (participant <> nil)
@@ -805,11 +914,17 @@ begin
   end;
 end;
 
+{
+  Logs a participant activity.
+}
 procedure TContextSession.LogActivity(participantCoupon: Integer; activity: String);
 begin
   LogActivity(FindParticipant(ParticipantCoupon), activity);
 end;
 
+{
+  Logs a context activity.
+}
 procedure TContextSession.LogActivity(context: PContext; activity: String);
 var
   participant: PParticipant;
@@ -819,12 +934,18 @@ begin
     activity, context^.contextCoupon]);
 end;
 
+{
+  Logs the start of a method invocation.
+}
 procedure TContextSession.LogStart(method: String);
 begin
   Log('Entering %s [thread#%d]', [method, GetCurrentThreadId]);
   logStack.Add(method);
 end;
 
+{
+` Logs the end of a method invocation.
+}
 procedure TContextSession.LogEnd();
 var
   method: String;
@@ -841,6 +962,9 @@ begin
 
 end;
 
+{
+  Logs an exception,
+}
 procedure TContextSession.LogException(e: Exception);
 begin
   Log('An error occured: %s', [e.Message]);
@@ -848,21 +972,33 @@ end;
 
 //************************** Exception Handling **************************/
 
+{
+  Raises a 'not implemented' exception.
+}
 procedure TContextSession.NotImplemented(message: String);
 begin
   Throw(message, E_NOTIMPL);
 end;
 
+{
+  Raises an exception with the specified text and result code.
+}
 procedure TContextSession.Throw(text: String; code: HRESULT);
 begin
   raise TContextException.Create(text, code);
 end;
 
+{
+  Raises an exception with the specified parameterized text and result code.
+}
 procedure TContextSession.Throw(text: String; code: HRESULT; params: array of const);
 begin
   Throw(Format(text, params), code);
 end;
 
+{
+  Creates an exception with the specified text and result code.
+}
 constructor TContextException.Create(text: String; code: HRESULT);
 begin
   inherited Create(text);
