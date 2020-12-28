@@ -38,6 +38,11 @@ type
   procedure Assert(condition: Boolean; text: String; params: array of const);
   function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
   function FromVarArray(varArray: OleVariant): TStrings;
+  function EncodeAsArray(list: TStrings): String; overload;
+  function EncodeAsArray(varArray: OleVariant): String; overload;
+  function EncodeParameter(s: String): String;
+  function EncodeForm(form: TStrings): String;
+  function DecodeForm(form: String): TStrings;
 
 implementation
 
@@ -115,6 +120,50 @@ begin
 
   for i := VarArrayLowBound(varArray, 1) to VarArrayHighBound(varArray, 1) do
     Result.Add(VarToStr(varArray[i]));
+end;
+
+function EncodeAsArray(list: TStrings): String; overload;
+begin
+  list.Delimiter := '|';
+  Result := list.DelimitedText;
+end;
+
+function EncodeAsArray(varArray: OleVariant): String; overload;
+begin
+  Result := EncodeAsArray(FromVarArray(varArray));
+end;
+
+function EncodeParameter(s: String): String;
+begin
+  s := StringReplace(s, '&', '%26', [rfReplaceAll]);
+  s := StringReplace(s, '=', '%3D', [rfReplaceAll]);
+  s := StringReplace(s, ' ', '+', [rfReplaceAll]);
+  Result := s;
+end;
+
+function EncodeForm(form: TStrings): String;
+var
+  i: Integer;
+begin
+  if form = nil
+  then Result := ''
+  else begin
+    form.Delimiter := '&';
+
+    for i := 0 to form.Count - 1 do
+      form.ValueFromIndex[i] := EncodeParameter(form.ValueFromIndex[i]);
+
+    Result := form.DelimitedText;
+  end;
+end;
+
+function DecodeForm(form: String): TStrings;
+begin
+  Result := TStringList.Create;
+  Result.Delimiter := '|';
+
+  if form <> ''
+  then Result.DelimitedText := form;
 end;
 
 end.

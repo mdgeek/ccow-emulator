@@ -8,7 +8,8 @@ uses
   SessionForm in 'SessionForm.pas' {frmSession},
   ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
   MainForm in 'MainForm.pas' {frmMain},
-  ServerModule in 'ServerModule.pas' {RestServer: TDataModule};
+  ServerModule in 'ServerModule.pas' {RestServer: TDataModule},
+  Participant in 'Participant.pas';
 
 {$R *.TLB}
 
