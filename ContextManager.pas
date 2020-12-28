@@ -15,7 +15,7 @@ type
   private
     session: TContextSession;
 
-  protected
+  public
 
     //************************** IContextManager **************************/
 
@@ -145,12 +145,10 @@ type
     function IImplementationInformation.Get_WhenInstalled = IImplementationInformation_Get_WhenInstalled;
     function IImplementationInformation_Get_WhenInstalled: WideString; safecall;
 
-
-  public
-    class function Create(session: TContextSession): TContextManager;
-
     procedure Initialize; override;
     function SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT; override;
+
+    class function Create(session: TContextSession): TContextManager;
 
   end;
 

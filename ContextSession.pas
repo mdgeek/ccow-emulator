@@ -7,15 +7,6 @@ uses
 
 type
   {
-    Specifies which component of a string list item is to be copied.
-  }
-  TListComponent = (
-    ValueComponent,   // The value component of a name/value pair.
-    NameComponent,    // The name component of a name/value pair.
-    BothComponents,   // Both the name and value component of a name/value pair.
-    RawText);         // The raw text value for the item.
-
-  {
     An exception that includes a result code.
   }
   TContextException = class(Exception)
@@ -61,9 +52,6 @@ type
     function GetCurrentcontextCoupon: Integer;
     procedure ValidatePendingContext(contextCoupon: Integer; participantCoupon: Integer);
     procedure MergeContexts;
-
-    function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
-    function FromVarArray(varArray: OleVariant): TStrings;
 
     procedure ClearChanged(items: TStrings);
     function ExtractItems(src: TStrings; itemName: String; onlyChanged: Boolean): TStrings;
@@ -763,79 +751,6 @@ begin
 end;
 
 //************************** Utility **************************/
-
-{
-  Converts a string list to a variant array.  The 'which' parameter determines
-  how the string list entries are returned.
-}
-function TContextSession.ToVarArray(items: TStrings; which: TListComponent): OleVariant;
-var
-  varArray: Variant;
-  varType: Word;
-  i, j: Integer;
-  upper: Integer;
-
-  procedure AddItem(item: String);
-  begin
-    Log('   %s', [item]);
-    varArray[j] := item;
-    j := j + 1;
-  end;
-
-  procedure AddPair(name: String; value: String);
-  begin
-    Log('   %s=%s', [name, value]);
-    varArray[j] := name;
-    j := j + 1;
-    varArray[j] := value;
-    j := j + 1;
-  end;
-
-begin
-  if which = BothComponents
-  then varType := varVariant
-  else varType := varOleStr;
-
-  if (items = nil) or (items.Count = 0)
-  then begin
-    Result := VarArrayCreate([0, -1], varType);
-    Exit;
-  end;
-
-  upper := items.Count;
-
-  if which = BothComponents
-  then upper := upper * 2;
-
-  varArray := VarArrayCreate([0, upper - 1], varType);
-  j := 0;
-
-  for i := 0 to items.Count - 1 do
-  begin
-    Case which of
-      ValueComponent: AddItem(items.ValueFromIndex[i]);
-      NameComponent: AddItem(items.Names[i]);
-      RawText: AddItem(items[i]);
-      BothComponents: AddPair(items.Names[i], items.ValueFromIndex[i]);
-      else Throw('Illegal string list component', E_FAIL);
-    end;
-  end;
-
-  Result := varArray;
-end;
-
-{
-  Converts a variant array to a string list.
-}
-function TContextSession.FromVarArray(varArray: OleVariant): TStrings;
-var
-  i: Integer;
-begin
-  Result := TStringList.Create;
-
-  for i := VarArrayLowBound(varArray, 1) to VarArrayHighBound(varArray, 1) do
-    Result.Add(VarToStr(varArray[i]));
-end;
 
 {
   Clears the changed flag from all items in a string list.

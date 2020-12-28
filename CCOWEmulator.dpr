@@ -7,7 +7,8 @@ uses
   CCOW_TLB in 'CCOW_TLB.pas',
   SessionForm in 'SessionForm.pas' {frmSession},
   ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
-  MainForm in 'MainForm.pas' {frmMain};
+  MainForm in 'MainForm.pas' {frmMain},
+  ServerModule in 'ServerModule.pas' {RestServer: TDataModule};
 
 {$R *.TLB}
 
@@ -17,6 +18,7 @@ begin
   Application.Initialize;
   Application.Title := 'CCOW Emulator';
   Application.CreateForm(TfrmMain, frmMain);
+  Application.CreateForm(TRestServer, RestServer);
   DefaultSession := TContextSession.Create;
   Application.Run;
 end.
