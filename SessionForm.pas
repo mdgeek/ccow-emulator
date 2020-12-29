@@ -41,9 +41,6 @@ type
     procedure Log(text: String; params: array of const); overload;
   end;
 
-var
-  frmSession: TSessionForm;
-
 implementation
 
 uses MainForm;

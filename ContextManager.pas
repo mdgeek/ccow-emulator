@@ -169,6 +169,7 @@ procedure TContextManager.Initialize;
 begin
   inherited;
   session := DefaultSession;
+  Assert(session <> nil, 'No session!!', []);
 end;
 
 function TContextManager.SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT;

@@ -3,20 +3,19 @@ unit MainForm;
 interface
 
 uses
-  SysUtils, Forms, ComServ, SessionForm, ComCtrls, Classes, Controls;
+  SysUtils, Forms, ComServ, SessionForm, ComCtrls, Classes, Controls,
+  StdCtrls;
 
 type
   TfrmMain = class(TForm)
     pages: TPageControl;
-    statusBar: TStatusBar;
+    tabServices: TTabSheet;
+    memoServicesLog: TMemo;
     procedure FormCreate(Sender: TObject);
-  private
-    procedure SetStatus(status: String);
   public
     function CreateSession(sessionId: Integer): TSessionForm;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OnLastRelease(var Shutdown: Boolean);
-    property Status: String write SetStatus;
+    procedure LogServiceActivity(activity: String);
   end;
 
 var
@@ -25,6 +24,9 @@ var
 implementation
 
 {$R *.dfm}
+
+uses
+  ServerModule;
 
 function TfrmMain.CreateSession(sessionId: Integer): TSessionForm;
 var
@@ -40,19 +42,12 @@ begin
   sessionForm.Parent := tab;
   sessionForm.Show;
   Result := sessionForm;
+  pages.ActivePage := tab;
 end;
 
-procedure TfrmMain.SetStatus(status: String);
+procedure TFrmMain.LogServiceActivity(activity: String);
 begin
-  statusBar.Panels[0].Text := status;
-end;
-
-procedure TfrmMain.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-
-  if (Operation = opRemove) and (AComponent is TTabSheet) and (pages.PageCount = 0)
-  then Close;
+  memoServicesLog.Lines.Add(activity);
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);

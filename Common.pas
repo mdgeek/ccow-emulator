@@ -38,6 +38,8 @@ type
   procedure Assert(condition: Boolean; text: String; params: array of const);
   function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
   function FromVarArray(varArray: OleVariant): TStrings;
+  function IndexOfName(name: String; list: TStrings): Integer;
+  function ValueFromName(name: String; list: TStrings): String;
   function SerializeArray(list: TStrings): String; overload;
   function SerializeArray(varArray: OleVariant): String; overload;
   function EncodeParameter(value: String): String;
@@ -129,6 +131,38 @@ begin
 
   for i := VarArrayLowBound(varArray, 1) to VarArrayHighBound(varArray, 1) do
     Result.Add(VarToStr(varArray[i]));
+end;
+
+{
+  Does a case-insensitive lookup by name.
+}
+function IndexOfName(name: String; list: TStrings): Integer;
+var
+  i: Integer;
+begin
+  Result := -1;
+
+  for i := 0 to list.Count - 1 do begin
+    if CompareText(name, list.Names[i]) = 0
+    then begin
+      Result := i;
+      break;
+    end;
+  end;
+end;
+
+{
+  Returns the value associated with a name using case-insensitive lookup.
+}
+function ValueFromName(name: String; list: TStrings): String;
+var
+  i: Integer;
+begin
+  i := IndexOfName(name, list);
+
+  if i = -1
+  then Result := ''
+  else Result := list.ValueFromIndex[i];
 end;
 
 {

@@ -5,7 +5,8 @@ interface
 uses
   SysUtils, Classes, StrUtils, IdBaseComponent, IdComponent, IdCustomTCPServer,
   IdCustomHTTPServer, IdHTTPServer, IdContext, IdTCPServer, IdUri, Common, CCOW_TLB,
-  IdTCPConnection, IdTCPClient;
+  IdTCPConnection, IdTCPClient,
+  ExtCtrls;
 
 type
   THandlerProc = procedure(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo) of object;
@@ -18,17 +19,18 @@ type
 
   TRestServer = class(TDataModule)
     httpServer: TIdHTTPServer;
+    Timer: TTimer;
     procedure httpServerCommandGet(context: TIdContext;
       request: TIdHTTPRequestInfo;
       response: TIdHTTPResponseInfo);
     procedure DataModuleCreate(Sender: TObject);
     procedure httpServerAfterBind(Sender: TObject);
-    procedure httpServerListenException(AThread: TIdListenerThread;
-      AException: Exception);
+    procedure DataModuleDestroy(Sender: TObject);
+    procedure TimerTimer(Sender: TObject);
   private
     handlers: TList;
     procedure AddHandler(intf: String; method: String; handler: THandlerProc);
-    function FindHandler(params: TStrings): THandler;
+    function FindHandler(method: String): THandler;
 
     //************************** ContextManagementRegistry **************************/
 
@@ -87,17 +89,28 @@ var
 
 //************************** Utility Methods **************************/
 
-procedure Status(status: String; params: array of const);
+{
+  Logs activity on the main form.
+}
+procedure Log(activity: String; params: array of const);
 begin
-  frmMain.Status := Format(status, params);
+  frmMain.LogServiceActivity(Format(activity, params));
 end;
 
-function GetParameter(paramName: String; request: TIdHTTPRequestInfo; required: Boolean): String;
+{
+  Returns the value of the named string parameter from a request.  If not present
+  and 'required' is true, an exception is raised.
+}
+function GetParameter(paramName: String; request: TIdHTTPRequestInfo; required: Boolean): String; overload;
 begin
-  Result := request.Params.Values[paramName];
+  Result := ValueFromName(paramName, request.Params);
   Assert(Not(required) or (Result <> ''), 'A required parameter (%s) is missing.', [paramName]);
 end;
 
+{
+  Returns the value of the named integer parameter from a request.  If not present
+  and 'required' is true, an exception is raised.
+}
 function GetIntParameter(paramName: String; request: TIdHTTPRequestInfo; required: Boolean): Integer;
 var
   s: String;
@@ -109,6 +122,10 @@ begin
   else Result := StrToInt(s);
 end;
 
+{
+  Returns the value of the named Boolean parameter from a request.  If not present
+  and 'required' is true, an exception is raised.
+}
 function GetBooleanParameter(paramName: String; request: TIdHTTPRequestInfo; required: Boolean): Boolean;
 var
   s: String;
@@ -117,6 +134,10 @@ begin
   Result := s = 'true';
 end;
 
+{
+  Returns the value of the named array parameter from a request.  If not present
+  and 'required' is true, an exception is raised.
+}
 function GetArrayParameter(paramName: String; request: TIdHTTPRequestInfo; required: Boolean): TStrings;
 var
   s: String;
@@ -129,6 +150,9 @@ begin
   then Result.DelimitedText := s;
 end;
 
+{
+  Encodes and copies a form into the response.
+}
 procedure SaveForm(response: TIdHTTPResponseInfo; form: TStrings);
 begin
   response.ContentText := EncodeForm(form);
@@ -139,44 +163,14 @@ end;
 
 constructor THandler.Create(method: String; handler: THandlerProc);
 begin
-  Self.method := AnsiLowerCase(method);
+  Self.method := method;
   Self.handler := handler;
 end;
 
 //************************** TRestServer **************************/
 
-procedure TRestServer.httpServerCommandGet(context: TIdContext;
-  request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
-var
-  handler: THandler;
-begin
-  Status('Received CCOW service request...', []);
-  handler := FindHandler(request.Params);
-  response.CacheControl := 'max-age=0, must-revalidate';
-
-  if handler = nil
-  then begin
-    response.ResponseNo := 404;
-    response.ContentText := 'exception=NotFound';
-  end else Try
-    response.ResponseNo := 200;
-    response.ContentType := 'application/x-www-form-urlencoded';
-    Status('Invoking CCOW service %s', [handler.method]);
-    handler.handler(request, response);
-  Except
-    on e: Exception do begin
-      response.ResponseNo := 500;
-      response.ContentText := 'exception=' + EncodeParameter(e.Message);
-    end;
-  end;
-
-  response.WriteHeader;
-  response.WriteContent;
-end;
-
 procedure TRestServer.DataModuleCreate(Sender: TObject);
 begin
-  ContextManager := TContextManager.Create(DefaultSession);
   handlers := TList.Create;
 
   AddHandler(INTF_CONTEXT_MANAGEMENT_REGISTRY, 'Locate', ContextManagementRegistry_Locate);
@@ -203,7 +197,52 @@ begin
   AddHandler(INTF_CONTEXT_FILTER, 'ClearFilter', ContextFilter_ClearFilter);
   AddHandler(INTF_CONTEXT_FILTER, 'SetSubjectsOfInterest', ContextFilter_SetSubjectsOfInterest);
 
-  httpServer.Active := True;
+  Try
+    httpServer.Active := True;
+  Except
+    on e: Exception do
+      Log('CCOW service initialization failed: %s', [e.Message]);
+  end;
+end;
+
+procedure TRestServer.DataModuleDestroy(Sender: TObject);
+begin
+  httpServer.Active := False;
+  ContextManager := nil;
+  handlers.Clear;
+end;
+
+procedure TRestServer.httpServerCommandGet(context: TIdContext;
+  request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  method: String;
+  handler: THandler;
+begin
+  response.CacheControl := 'max-age=0, must-revalidate';
+  method := getParameter('interface', request, True) + '::' + getParameter('method', request, True);
+  Log('Servicing request for CCOW service %s', [method]);
+  handler := FindHandler(method);
+
+  if handler = nil
+  then begin
+    response.ResponseNo := 404;
+    response.ContentText := 'exception=NotFound';
+    Log('No CCOW service named %s is registered', [method]);
+  end else Try
+    response.ResponseNo := 200;
+    response.ContentType := 'application/x-www-form-urlencoded';
+    handler.handler(request, response);
+    Log('The CCOW service %s completed successfully', [handler.method]);
+  Except
+    on e: Exception do begin
+      response.ResponseNo := 500;
+      response.ContentText := 'exception=' + EncodeParameter(e.Message);
+      Log('The CCOW service %s returned an error: %s', [handler.method, e.Message]);
+    end;
+  end;
+
+  response.WriteHeader;
+  response.WriteContent;
 end;
 
 procedure TRestServer.AddHandler(intf: String; method: String; handler: THandlerProc);
@@ -211,20 +250,18 @@ begin
   handlers.Add(THandler.Create(intf + '::' + method, handler));
 end;
 
-function TRestServer.FindHandler(params: TStrings): THandler;
+function TRestServer.FindHandler(method: String): THandler;
 var
   i: Integer;
   h: THandler;
-  method: String;
 begin
   Result := nil;
-  method := AnsiLowerCase(params.Values['interface'] + '::' + params.Values['method']);
 
   for i := 0 to handlers.Count - 1 do
   begin
     h := THandler(handlers[i]);
 
-    if h.method = method
+    if CompareText(h.method, method) = 0
     then begin
       Result := h;
       break;
@@ -255,7 +292,18 @@ end;
 //************************** ContextManager **************************/
 
 procedure TRestServer.ContextManager_EndContextChanges(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  contextCoupon: Integer;
+  noContinue: WordBool;
+  responses: OleVariant;
+  form: TStrings;
 begin
+  contextCoupon := GetIntParameter('contextCoupon', request, True);
+  ContextManager.IContextManager_EndContextChanges(contextCoupon, noContinue);
+  form := TStringList.Create;
+  form.Values['noContinue'] := BoolToStr(noContinue);
+  form.Values['responses'] := SerializeArray(responses);
+  SaveForm(response, form);
 end;
 
 procedure TRestServer.ContextManager_Get_MostRecentContextCoupon(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
@@ -481,12 +529,13 @@ end;
 
 procedure TRestServer.httpServerAfterBind(Sender: TObject);
 begin
-  Status('CCOW services available on port %d', [httpServer.DefaultPort]);
+  Log('CCOW services available on port %d', [httpServer.DefaultPort]);
 end;
 
-procedure TRestServer.httpServerListenException(AThread: TIdListenerThread; AException: Exception);
+procedure TRestServer.TimerTimer(Sender: TObject);
 begin
-  Status('Error initializing CCOW services: %s', [AException.message]);
+  FreeAndNil(timer);
+  ContextManager := TContextManager.Create(DefaultSession);
 end;
 
 end.
