@@ -38,14 +38,23 @@ type
   procedure Assert(condition: Boolean; text: String; params: array of const);
   function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
   function FromVarArray(varArray: OleVariant): TStrings;
-  function EncodeAsArray(list: TStrings): String; overload;
-  function EncodeAsArray(varArray: OleVariant): String; overload;
-  function EncodeParameter(s: String): String;
+  function SerializeArray(list: TStrings): String; overload;
+  function SerializeArray(varArray: OleVariant): String; overload;
+  function EncodeParameter(value: String): String;
+  function DecodeParameter(value: String): String;
   function EncodeForm(form: TStrings): String;
   function DecodeForm(form: String): TStrings;
 
 implementation
 
+const
+
+  CHAR_RESERVED: array[0..3] of String = ('%', '&', '=', ' ');
+  CHAR_ESCAPED: array[0..3] of String = ('%25', '%26', '%3D', '+');
+  
+{
+  Asserts that a condition is true, raising an exception if it is not.
+}
 procedure Assert(condition: Boolean; text: String; params: array of const);
 begin
   if Not(condition)
@@ -122,25 +131,55 @@ begin
     Result.Add(VarToStr(varArray[i]));
 end;
 
-function EncodeAsArray(list: TStrings): String; overload;
+{
+  Serialize a string list into a '|'-delimited string;
+}
+function SerializeArray(list: TStrings): String; overload;
 begin
   list.Delimiter := '|';
   Result := list.DelimitedText;
 end;
 
-function EncodeAsArray(varArray: OleVariant): String; overload;
+{
+  Serialize a variant array into a '|'-delimited string;
+}
+function SerializeArray(varArray: OleVariant): String; overload;
 begin
-  Result := EncodeAsArray(FromVarArray(varArray));
+  Result := SerializeArray(FromVarArray(varArray));
 end;
 
-function EncodeParameter(s: String): String;
+{
+  Replaces 'from' tokens with 'to' tokens.
+}
+function Xlate(value: String; fromTokens: array of String; toTokens: array of String): String;
+var
+  i: Integer;
 begin
-  s := StringReplace(s, '&', '%26', [rfReplaceAll]);
-  s := StringReplace(s, '=', '%3D', [rfReplaceAll]);
-  s := StringReplace(s, ' ', '+', [rfReplaceAll]);
-  Result := s;
+  Result := value;
+
+  for i := 0 to Length(fromTokens) - 1 do
+    Result := StringReplace(Result, fromTokens[i], toTokens[i], [rfReplaceAll, rfIgnoreCase]);
 end;
 
+{
+  Encode a parameter value, escaping reserved characters.
+}
+function EncodeParameter(value: String): String;
+begin
+  Result := Xlate(value, CHAR_RESERVED, CHAR_ESCAPED);
+end;
+
+{
+  Encode a parameter value, escaping reserved characters.
+}
+function DecodeParameter(value: String): String;
+begin
+  Result := Xlate(value, CHAR_ESCAPED, CHAR_RESERVED);
+end;
+
+{
+  Encodes a series of name/value pairs into query string format.
+}
 function EncodeForm(form: TStrings): String;
 var
   i: Integer;
@@ -157,6 +196,9 @@ begin
   end;
 end;
 
+{
+  Decodes a query string into a list of name/value pairs.
+}
 function DecodeForm(form: String): TStrings;
 begin
   Result := TStringList.Create;

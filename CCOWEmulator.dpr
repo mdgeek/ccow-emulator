@@ -19,7 +19,7 @@ begin
   Application.Initialize;
   Application.Title := 'CCOW Emulator';
   Application.CreateForm(TfrmMain, frmMain);
-  Application.CreateForm(TRestServer, RestServer);
   DefaultSession := TContextSession.Create;
+  Application.CreateForm(TRestServer, RestServer);
   Application.Run;
 end.

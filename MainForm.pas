@@ -8,12 +8,15 @@ uses
 type
   TfrmMain = class(TForm)
     pages: TPageControl;
-    status: TStatusBar;
+    statusBar: TStatusBar;
     procedure FormCreate(Sender: TObject);
+  private
+    procedure SetStatus(status: String);
   public
     function CreateSession(sessionId: Integer): TSessionForm;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure OnLastRelease(var Shutdown: Boolean);
+    property Status: String write SetStatus;
   end;
 
 var
@@ -37,6 +40,11 @@ begin
   sessionForm.Parent := tab;
   sessionForm.Show;
   Result := sessionForm;
+end;
+
+procedure TfrmMain.SetStatus(status: String);
+begin
+  statusBar.Panels[0].Text := status;
 end;
 
 procedure TfrmMain.Notification(AComponent: TComponent; Operation: TOperation);

@@ -23,6 +23,8 @@ type
       response: TIdHTTPResponseInfo);
     procedure DataModuleCreate(Sender: TObject);
     procedure httpServerAfterBind(Sender: TObject);
+    procedure httpServerListenException(AThread: TIdListenerThread;
+      AException: Exception);
   private
     handlers: TList;
     procedure AddHandler(intf: String; method: String; handler: THandlerProc);
@@ -126,7 +128,6 @@ procedure SaveForm(response: TIdHTTPResponseInfo; form: TStrings);
 begin
   response.ContentText := EncodeForm(form);
   response.ContentType := 'application/x-www-form-urlencoded';
-
 end;
 
 //************************** THandler **************************/
@@ -195,7 +196,7 @@ begin
   AddHandler(INTF_CONTEXT_FILTER, 'ClearFilter', ContextFilter_ClearFilter);
   AddHandler(INTF_CONTEXT_FILTER, 'SetSubjectsOfInterest', ContextFilter_SetSubjectsOfInterest);
 
-  end;
+end;
 
 procedure TRestServer.AddHandler(intf: String; method: String; handler: THandlerProc);
 begin
@@ -345,7 +346,7 @@ var
   form: TStrings;
 begin
   contextCoupon := GetIntParameter('contextCoupon', request, True);
-  itemNames := EncodeAsArray(ContextManager.IContextData_GetItemNames(contextCoupon));
+  itemNames := SerializeArray(ContextManager.IContextData_GetItemNames(contextCoupon));
   form := TStringList.Create;
   form.Values['names'] := itemNames;
   SaveForm(response, form);
@@ -362,7 +363,7 @@ begin
   contextCoupon := GetIntParameter('contextCoupon', request, True);
   itemNames := ToVarArray(GetArrayParameter('itemNames', request, True), RawText);
   onlyChanges := GetBooleanParameter('onlyChanges', request, True);
-  itemValues := EncodeAsArray(ContextManager.IContextData_GetItemValues(itemNames, onlyChanges, contextCoupon));
+  itemValues := SerializeArray(ContextManager.IContextData_GetItemValues(itemNames, onlyChanges, contextCoupon));
   form := TStringList.Create;
   form.Values['values'] := itemNames;
   SaveForm(response, form);
@@ -391,7 +392,7 @@ var
   form: TStrings;
 begin
   contextCoupon := GetIntParameter('contextCoupon', request, True);
-  itemNames := EncodeAsArray(ContextManager.ISecureContextData_GetItemNames(contextCoupon));
+  itemNames := SerializeArray(ContextManager.ISecureContextData_GetItemNames(contextCoupon));
   form := TStringList.Create;
   form.Values['names'] := itemNames;
   SaveForm(response, form);
@@ -413,7 +414,7 @@ begin
   itemNames := ToVarArray(GetArrayParameter('itemNames', request, True), RawText);
   onlyChanges := GetBooleanParameter('onlyChanges', request, True);
   appSignature := GetParameter('appSignature', request, True);
-  itemValues := EncodeAsArray(ContextManager.ISecureContextData_GetItemValues(
+  itemValues := SerializeArray(ContextManager.ISecureContextData_GetItemValues(
     participantCoupon, itemNames, onlyChanges, contextCoupon, appSignature, managerSignature));
   form := TStringList.Create;
   form.Values['values'] := itemNames;
@@ -448,7 +449,7 @@ begin
   participantCoupon := GetIntParameter('participantCoupon', request, True);
   subjectNames := ContextManager.IContextFilter_GetSubjectsOfInterest(participantCoupon);
   form := TStringList.Create;
-  form.Values['subjectNames'] := EncodeAsArray(subjectNames);
+  form.Values['subjectNames'] := SerializeArray(subjectNames);
   SaveForm(response, form);
 end;
 
@@ -472,7 +473,12 @@ end;
 
 procedure TRestServer.httpServerAfterBind(Sender: TObject);
 begin
-  frmMain.status.Panels[0].Text := 'ContextManagementRegistry listening on port ' + IntToStr(httpServer.DefaultPort);
+  frmMain.Status := 'CCOW services available on port ' + IntToStr(httpServer.DefaultPort);
+end;
+
+procedure TRestServer.httpServerListenException(AThread: TIdListenerThread; AException: Exception);
+begin
+  frmMain.Status := 'Error initializing CCOW services: ' + AException.message;
 end;
 
 end.

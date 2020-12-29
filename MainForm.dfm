@@ -24,7 +24,7 @@ object frmMain: TfrmMain
     Align = alClient
     TabOrder = 0
   end
-  object status: TStatusBar
+  object statusBar: TStatusBar
     Left = 0
     Top = 564
     Width = 730
