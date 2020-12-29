@@ -6,7 +6,6 @@ object RestServer: TRestServer
   Height = 255
   Width = 455
   object httpServer: TIdHTTPServer
-    Active = True
     Bindings = <>
     DefaultPort = 2116
     OnAfterBind = httpServerAfterBind

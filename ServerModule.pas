@@ -87,6 +87,11 @@ var
 
 //************************** Utility Methods **************************/
 
+procedure Status(status: String; params: array of const);
+begin
+  frmMain.Status := Format(status, params);
+end;
+
 function GetParameter(paramName: String; request: TIdHTTPRequestInfo; required: Boolean): String;
 begin
   Result := request.Params.Values[paramName];
@@ -145,6 +150,7 @@ procedure TRestServer.httpServerCommandGet(context: TIdContext;
 var
   handler: THandler;
 begin
+  Status('Received CCOW service request...', []);
   handler := FindHandler(request.Params);
   response.CacheControl := 'max-age=0, must-revalidate';
 
@@ -155,6 +161,7 @@ begin
   end else Try
     response.ResponseNo := 200;
     response.ContentType := 'application/x-www-form-urlencoded';
+    Status('Invoking CCOW service %s', [handler.method]);
     handler.handler(request, response);
   Except
     on e: Exception do begin
@@ -196,6 +203,7 @@ begin
   AddHandler(INTF_CONTEXT_FILTER, 'ClearFilter', ContextFilter_ClearFilter);
   AddHandler(INTF_CONTEXT_FILTER, 'SetSubjectsOfInterest', ContextFilter_SetSubjectsOfInterest);
 
+  httpServer.Active := True;
 end;
 
 procedure TRestServer.AddHandler(intf: String; method: String; handler: THandlerProc);
@@ -473,12 +481,12 @@ end;
 
 procedure TRestServer.httpServerAfterBind(Sender: TObject);
 begin
-  frmMain.Status := 'CCOW services available on port ' + IntToStr(httpServer.DefaultPort);
+  Status('CCOW services available on port %d', [httpServer.DefaultPort]);
 end;
 
 procedure TRestServer.httpServerListenException(AThread: TIdListenerThread; AException: Exception);
 begin
-  frmMain.Status := 'Error initializing CCOW services: ' + AException.message;
+  Status('Error initializing CCOW services: %s', [AException.message]);
 end;
 
 end.
