@@ -534,7 +534,7 @@ end;
 
 procedure TRestServer.TimerTimer(Sender: TObject);
 begin
-  FreeAndNil(timer);
+  timer.Enabled := False;
   ContextManager := TContextManager.Create(DefaultSession);
 end;
 

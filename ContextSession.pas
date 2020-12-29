@@ -641,7 +641,6 @@ function TContextSession.GetItemValues(participantCoupon: Integer;
   itemNames: OleVariant; onlyChanges: WordBool; contextCoupon: Integer): OleVariant;
 var
   names: TStrings;
-  itemName: String;
   items: TStrings;
   matches: TStrings;
   i: Integer;
@@ -654,10 +653,7 @@ begin
   names := FromVarArray(itemNames);
 
   for i := 0 to names.Count - 1 do
-  begin
-    itemName := AnsiLowerCase(names[i]);
-    matches.AddStrings(ExtractItems(items, itemName, onlyChanges));
-  end;
+    matches.AddStrings(ExtractItems(items, names[i], onlyChanges));
 
   Result := ToVarArray(matches, BothComponents);
 end;
@@ -784,7 +780,7 @@ begin
 
   if Not(AnsiEndsText('*', itemName))
   then begin
-    AddItem(src.IndexOfName(itemName));
+    AddItem(IndexOfName(itemName, src));
     Exit;
   end;
 
