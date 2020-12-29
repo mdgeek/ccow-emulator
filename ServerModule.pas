@@ -22,6 +22,7 @@ type
       request: TIdHTTPRequestInfo;
       response: TIdHTTPResponseInfo);
     procedure DataModuleCreate(Sender: TObject);
+    procedure httpServerAfterBind(Sender: TObject);
   private
     handlers: TList;
     procedure AddHandler(intf: String; method: String; handler: THandlerProc);
@@ -49,6 +50,17 @@ type
     procedure ContextData_GetItemValues(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
     procedure ContextData_SetItemValues(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 
+    //************************** SecureContextData **************************/
+
+    procedure SecureContextData_GetItemNames(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+    procedure SecureContextData_GetItemValues(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+    procedure SecureContextData_SetItemValues(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+
+    //************************** ContextFilter **************************/
+
+    procedure ContextFilter_GetSubjectsOfInterest(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+    procedure ContextFilter_ClearFilter(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+    procedure ContextFilter_SetSubjectsOfInterest(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
   end;
 
 var
@@ -59,12 +71,14 @@ implementation
 {$R *.dfm}
 
 uses
-  ContextManager, ContextSession, Participant;
+  ContextManager, ContextSession, Participant, MainForm;
 
 const
   INTF_CONTEXT_MANAGEMENT_REGISTRY = 'ContextManagementRegistry';
   INTF_CONTEXT_MANAGER = 'ContextManager';
   INTF_CONTEXT_DATA = 'ContextData';
+  INTF_SECURE_CONTEXT_DATA = 'SecureContextData';
+  INTF_CONTEXT_FILTER = 'ContextFilter';
 
 var
   ContextManager: TContextManager;
@@ -136,7 +150,7 @@ begin
   if handler = nil
   then begin
     response.ResponseNo := 404;
-    response.ContentText := 'error=Bad Request';
+    response.ContentText := 'exception=NotFound';
   end else Try
     response.ResponseNo := 200;
     response.ContentType := 'application/x-www-form-urlencoded';
@@ -144,7 +158,7 @@ begin
   Except
     on e: Exception do begin
       response.ResponseNo := 500;
-      response.ContentText := e.Message;
+      response.ContentText := 'exception=' + EncodeParameter(e.Message);
     end;
   end;
 
@@ -172,7 +186,16 @@ begin
   AddHandler(INTF_CONTEXT_DATA, 'GetItemNames', ContextData_GetItemNames);
   AddHandler(INTF_CONTEXT_DATA, 'GetItemValues', ContextData_GetItemValues);
   AddHandler(INTF_CONTEXT_DATA, 'SetItemValues', ContextData_SetItemValues);
-end;
+
+  AddHandler(INTF_SECURE_CONTEXT_DATA, 'GetItemNames', SecureContextData_GetItemNames);
+  AddHandler(INTF_SECURE_CONTEXT_DATA, 'GetItemValues', SecureContextData_GetItemValues);
+  AddHandler(INTF_SECURE_CONTEXT_DATA, 'SetItemValues', SecureContextData_SetItemValues);
+
+  AddHandler(INTF_CONTEXT_FILTER, 'GetSubjectsOfInterest', ContextFilter_GetSubjectsOfInterest);
+  AddHandler(INTF_CONTEXT_FILTER, 'ClearFilter', ContextFilter_ClearFilter);
+  AddHandler(INTF_CONTEXT_FILTER, 'SetSubjectsOfInterest', ContextFilter_SetSubjectsOfInterest);
+
+  end;
 
 procedure TRestServer.AddHandler(intf: String; method: String; handler: THandlerProc);
 begin
@@ -253,59 +276,64 @@ begin
   participantCoupon := ContextManager.IContextManager_JoinCommonContext(contextParticipant, applicationName, survey, wait);
   form := TStringList.Create;
   form.Values['participantCoupon'] := IntToStr(participantCoupon);
+  SaveForm(response, form);
 end;
 
 procedure TRestServer.ContextManager_StartContextChanges(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 var
+  participantCoupon: Integer;
   contextCoupon: Integer;
   form: TStrings;
 begin
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  contextCoupon := ContextManager.IContextManager_StartContextChanges(participantCoupon);
   form := TStringList.Create;
+  form.Values['contextCoupon'] := IntToStr(contextCoupon);
+  SaveForm(response, form);
 end;
 
 procedure TRestServer.ContextManager_LeaveCommonContext(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 var
-  contextCoupon: Integer;
-  form: TStrings;
+  participantCoupon: Integer;
 begin
-  form := TStringList.Create;
-
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  ContextManager.IContextManager_LeaveCommonContext(participantCoupon);
 end;
 
 procedure TRestServer.ContextManager_PublishChangesDecision(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 var
   contextCoupon: Integer;
-  form: TStrings;
+  decision: String;
 begin
-  form := TStringList.Create;
-
+  contextCoupon := GetIntParameter('contextCoupon', request, True);
+  decision := GetParameter('decision', request, True);
+  ContextManager.IContextManager_PublishChangesDecision(contextCoupon, decision);
 end;
 
 procedure TRestServer.ContextManager_ResumeParticipation(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 var
-  contextCoupon: Integer;
-  form: TStrings;
+  participantCoupon: Integer;
+  wait: Boolean;
 begin
-  form := TStringList.Create;
-
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  wait := GetBooleanParameter('wait', request, True);
+  ContextManager.IContextManager_ResumeParticipation(participantCoupon, wait);
 end;
 
 procedure TRestServer.ContextManager_SuspendParticipation(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 var
-  contextCoupon: Integer;
-  form: TStrings;
+  participantCoupon: Integer;
 begin
-  form := TStringList.Create;
-
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  ContextManager.IContextManager_SuspendParticipation(participantCoupon);
 end;
 
 procedure TRestServer.ContextManager_UndoContextChanges(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
 var
   contextCoupon: Integer;
-  form: TStrings;
 begin
-  form := TStringList.Create;
-
+  contextCoupon := GetIntParameter('contextCoupon', request, True);
+  ContextManager.IContextManager_UndoContextChanges(contextCoupon);
 end;
 
 //************************** ContextData **************************/
@@ -352,6 +380,99 @@ begin
   itemNames := ToVarArray(GetArrayParameter('itemNames', request, True), RawText);
   itemValues := ToVarArray(GetArrayParameter('itemValues', request, True), RawText);
   ContextManager.IContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
+end;
+
+//************************** SecureContextData **************************/
+
+procedure TRestServer.SecureContextData_GetItemNames(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  itemNames: String;
+  contextCoupon: Integer;
+  form: TStrings;
+begin
+  contextCoupon := GetIntParameter('contextCoupon', request, True);
+  itemNames := EncodeAsArray(ContextManager.ISecureContextData_GetItemNames(contextCoupon));
+  form := TStringList.Create;
+  form.Values['names'] := itemNames;
+  SaveForm(response, form);
+end;
+
+procedure TRestServer.SecureContextData_GetItemValues(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  itemValues: String;
+  participantCoupon: Integer;
+  contextCoupon: Integer;
+  itemNames: OleVariant;
+  onlyChanges: Boolean;
+  appSignature: String;
+  managerSignature: WideString;
+  form: TStrings;
+begin
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  contextCoupon := GetIntParameter('contextCoupon', request, True);
+  itemNames := ToVarArray(GetArrayParameter('itemNames', request, True), RawText);
+  onlyChanges := GetBooleanParameter('onlyChanges', request, True);
+  appSignature := GetParameter('appSignature', request, True);
+  itemValues := EncodeAsArray(ContextManager.ISecureContextData_GetItemValues(
+    participantCoupon, itemNames, onlyChanges, contextCoupon, appSignature, managerSignature));
+  form := TStringList.Create;
+  form.Values['values'] := itemNames;
+  form.Values['managerSignature'] := managerSignature;
+  SaveForm(response, form);
+end;
+
+procedure TRestServer.SecureContextData_SetItemValues(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  itemValues: String;
+  participantCoupon: Integer;
+  contextCoupon: Integer;
+  appSignature: String;
+  itemNames: OleVariant;
+begin
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  contextCoupon := GetIntParameter('contextCoupon', request, True);
+  appSignature := GetParameter('appSignature', request, True);
+  itemNames := ToVarArray(GetArrayParameter('itemNames', request, True), RawText);
+  itemValues := ToVarArray(GetArrayParameter('itemValues', request, True), RawText);
+  ContextManager.ISecureContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon, appSignature);
+end;
+
+//************************** ContextFilter **************************/
+
+procedure TRestServer.ContextFilter_GetSubjectsOfInterest(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  participantCoupon: Integer;
+  subjectNames: OleVariant;
+  form: TStrings;
+begin
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  subjectNames := ContextManager.IContextFilter_GetSubjectsOfInterest(participantCoupon);
+  form := TStringList.Create;
+  form.Values['subjectNames'] := EncodeAsArray(subjectNames);
+  SaveForm(response, form);
+end;
+
+procedure TRestServer.ContextFilter_ClearFilter(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  participantCoupon: Integer;
+begin
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  ContextManager.IContextFilter_ClearFilter(participantCoupon);
+end;
+
+procedure TRestServer.ContextFilter_SetSubjectsOfInterest(request: TIdHTTPRequestInfo; response: TIdHTTPResponseInfo);
+var
+  participantCoupon: Integer;
+  subjectNames: OleVariant;
+begin
+  participantCoupon := GetIntParameter('participantCoupon', request, True);
+  subjectNames := ToVarArray(GetArrayParameter('subjectNames', request, True), RawText);
+  ContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon, subjectNames);
+end;
+
+procedure TRestServer.httpServerAfterBind(Sender: TObject);
+begin
+  frmMain.status.Panels[0].Text := 'ContextManagementRegistry listening on port ' + IntToStr(httpServer.DefaultPort);
 end;
 
 end.

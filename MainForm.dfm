@@ -20,8 +20,18 @@ object frmMain: TfrmMain
     Left = 0
     Top = 0
     Width = 730
-    Height = 583
+    Height = 564
     Align = alClient
     TabOrder = 0
+  end
+  object status: TStatusBar
+    Left = 0
+    Top = 564
+    Width = 730
+    Height = 19
+    Panels = <
+      item
+        Width = 50
+      end>
   end
 end

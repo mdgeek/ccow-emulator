@@ -9,6 +9,7 @@ object RestServer: TRestServer
     Active = True
     Bindings = <>
     DefaultPort = 2116
+    OnAfterBind = httpServerAfterBind
     OnCommandGet = httpServerCommandGet
     Left = 208
     Top = 96

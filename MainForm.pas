@@ -8,6 +8,7 @@ uses
 type
   TfrmMain = class(TForm)
     pages: TPageControl;
+    status: TStatusBar;
     procedure FormCreate(Sender: TObject);
   public
     function CreateSession(sessionId: Integer): TSessionForm;
