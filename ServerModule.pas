@@ -5,7 +5,7 @@ interface
 uses
   SysUtils, Classes, StrUtils, IdBaseComponent, IdComponent, IdCustomTCPServer,
   IdCustomHTTPServer, IdHTTPServer, IdContext, IdTCPServer, IdUri, Common, CCOW_TLB,
-  IdTCPConnection, IdTCPClient, ExtCtrls, Variants;
+  IdTCPConnection, IdTCPClient, ExtCtrls, Variants, Windows, ContextManager;
 
 type
   TFormRequest = class
@@ -38,7 +38,8 @@ type
     procedure SetParamVariant(name: String; value: Variant);
   public
     constructor Create(response: TIdHTTPResponseInfo);
-    procedure Save;
+    procedure SetException(code: Integer; text: String);
+    procedure Write;
     property Param[name: String]: String write SetParamStr;
     property ParamInt[name: String]: Integer write SetParamInt;
     property ParamBool[name: String]: Boolean write SetParamBool;
@@ -63,6 +64,7 @@ type
     procedure DataModuleDestroy(Sender: TObject);
     procedure TimerTimer(Sender: TObject);
   private
+    contextManager: TContextManager;
     handlers: TList;
     procedure AddHandler(intf: String; method: String; handler: THandlerProc);
     function FindHandler(method: String): THandler;
@@ -110,7 +112,7 @@ implementation
 {$R *.dfm}
 
 uses
-  ContextManager, ContextSession, Participant, MainForm;
+  ContextSession, Participant, MainForm;
 
 const
   INTF_CONTEXT_MANAGEMENT_REGISTRY = 'ContextManagementRegistry';
@@ -119,9 +121,6 @@ const
   INTF_SECURE_CONTEXT_DATA = 'SecureContextData';
   INTF_CONTEXT_FILTER = 'ContextFilter';
 
-var
-  ContextManager: TContextManager;
-
 //************************** Logging **************************/
 
 {
@@ -129,7 +128,7 @@ var
 }
 procedure Log(activity: String; params: array of const);
 begin
-  frmMain.LogServiceActivity(Format(activity, params));
+  frmMain.LogServiceActivity(Format('[%d] ', [GetCurrentThreadId]) + Format(activity, params));
 end;
 
 //************************** TFormRequest **************************/
@@ -165,6 +164,7 @@ function TFormRequest.getParamList(name: String): TStrings;
 begin
   Result := TStringList.Create;
   Result.Delimiter := '|';
+  Result.QuoteChar := #0;
   Result.DelimitedText := GetParamStr(name);
 end;
 
@@ -178,6 +178,10 @@ end;
 constructor TFormResponse.Create(response: TIdHTTPResponseInfo);
 begin
   Self.response := response;
+  response.ResponseNo := 200;
+  response.CacheControl := 'max-age=0, must-revalidate';
+  response.CustomHeaders.Values['Access-Control-Allow-Origin'] := '*';
+  response.ContentType := 'application/x-www-form-urlencoded';
   content := TStringList.Create;
 end;
 
@@ -198,18 +202,28 @@ end;
 
 procedure TFormResponse.SetParamVariant(name: String; value: Variant);
 begin
-  if VarIsArray(value)
+  if value = Null
+  then SetParamStr(name, '')
+  else if VarIsArray(value)
   then SetParamStr(name, SerializeArray(value))
   else SetParamStr(name, value);
+end;
+
+procedure TFormResponse.SetException(code: Integer; text: String);
+begin
+  content.Clear;
+  response.ResponseNo := code;
+  Param['exception'] := text;
 end;
 
 {
   Encodes and copies the response form into the HTTP response.
 }
-procedure TFormResponse.Save;
+procedure TFormResponse.Write;
 begin
   response.ContentText := EncodeForm(content);
-  response.ContentType := 'application/x-www-form-urlencoded';
+  response.WriteHeader;
+  response.WriteContent;
 end;
 
 //************************** THandler **************************/
@@ -261,10 +275,13 @@ end;
 procedure TRestServer.DataModuleDestroy(Sender: TObject);
 begin
   httpServer.Active := False;
-  ContextManager := nil;
+  contextManager := nil;
   handlers.Clear;
 end;
 
+{
+  Handles all GET requests.
+}
 procedure TRestServer.httpServerCommandGet(context: TIdContext;
   httpRequest: TIdHTTPRequestInfo; httpResponse: TIdHTTPResponseInfo);
 var
@@ -273,34 +290,27 @@ var
   request: TFormRequest;
   response: TFormResponse;
 begin
-  httpResponse.CacheControl := 'max-age=0, must-revalidate';
-  httpResponse.CustomHeaders.Values['Access-Control-Allow-Origin'] := '*';
   request := TFormRequest.Create(httpRequest);
+  response := TFormResponse.Create(httpResponse);
   method := request.Method;
   Log('Entering %s', [method]);
   handler := FindHandler(method);
 
   if handler = nil
   then begin
-    httpResponse.ResponseNo := 404;
-    httpResponse.ContentText := 'exception=NotFound';
+    response.SetException(404, 'NotFound');
     Log('Unknown service %s', [method]);
   end else Try
-    httpResponse.ResponseNo := 200;
-    response := TFormResponse.Create(httpResponse);
     handler.handler(request, response);
-    response.Save;
     Log('Exited %s', [handler.method]);
   Except
     on e: Exception do begin
-      httpResponse.ResponseNo := 500;
-      httpResponse.ContentText := 'exception=' + EncodeParameter(e.Message);
+      response.SetException(500, e.Message);
       Log('%s returned an error: %s', [handler.method, e.Message]);
     end;
   end;
 
-  httpResponse.WriteHeader;
-  httpResponse.WriteContent;
+  response.Write;
 end;
 
 procedure TRestServer.AddHandler(intf: String; method: String; handler: THandlerProc);
@@ -342,7 +352,6 @@ begin
   version := request.Optional['version'];
   response.Param['componentUrl'] := 'http://127.0.0.1:2116';
   response.Param['site'] := 'test.ccow.org';
-  response.Save;
 end;
 
 //************************** ContextManager **************************/
@@ -354,7 +363,7 @@ var
   responses: OleVariant;
 begin
   contextCoupon := request.ParamInt['contextCoupon'];
-  responses := ContextManager.IContextManager_EndContextChanges(contextCoupon, noContinue);
+  responses := contextManager.IContextManager_EndContextChanges(contextCoupon, noContinue);
   response.ParamBool['noContinue'] := noContinue;
   response.ParamVariant['responses'] := responses;
 end;
@@ -363,7 +372,7 @@ procedure TRestServer.ContextManager_Get_MostRecentContextCoupon(request: TFormR
 var
   contextCoupon: Integer;
 begin
-  contextCoupon := ContextManager.IContextManager_Get_MostRecentcontextCoupon;
+  contextCoupon := contextManager.IContextManager_Get_MostRecentcontextCoupon;
   response.ParamInt['contextCoupon'] := contextCoupon;
 end;
 
@@ -379,7 +388,7 @@ begin
   contextParticipant := TParticipant.Create(request.Param['contextParticipant']);
   survey := request.ParamBool['survey'];
   wait := request.ParamBool['wait'];
-  participantCoupon := ContextManager.IContextManager_JoinCommonContext(contextParticipant, applicationName, survey, wait);
+  participantCoupon := contextManager.IContextManager_JoinCommonContext(contextParticipant, applicationName, survey, wait);
   response.ParamInt['participantCoupon'] := participantCoupon;
 end;
 
@@ -389,7 +398,7 @@ var
   contextCoupon: Integer;
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
-  contextCoupon := ContextManager.IContextManager_StartContextChanges(participantCoupon);
+  contextCoupon := contextManager.IContextManager_StartContextChanges(participantCoupon);
   response.ParamInt['contextCoupon'] := contextCoupon;
 end;
 
@@ -398,7 +407,7 @@ var
   participantCoupon: Integer;
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
-  ContextManager.IContextManager_LeaveCommonContext(participantCoupon);
+  contextManager.IContextManager_LeaveCommonContext(participantCoupon);
 end;
 
 procedure TRestServer.ContextManager_PublishChangesDecision(request: TFormRequest; response: TFormResponse);
@@ -408,7 +417,7 @@ var
 begin
   contextCoupon := request.ParamInt['contextCoupon'];
   decision := request.Param['decision'];
-  ContextManager.IContextManager_PublishChangesDecision(contextCoupon, decision);
+  contextManager.IContextManager_PublishChangesDecision(contextCoupon, decision);
 end;
 
 procedure TRestServer.ContextManager_ResumeParticipation(request: TFormRequest; response: TFormResponse);
@@ -418,7 +427,7 @@ var
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
   wait := request.ParamBool['wait'];
-  ContextManager.IContextManager_ResumeParticipation(participantCoupon, wait);
+  contextManager.IContextManager_ResumeParticipation(participantCoupon, wait);
 end;
 
 procedure TRestServer.ContextManager_SuspendParticipation(request: TFormRequest; response: TFormResponse);
@@ -426,7 +435,7 @@ var
   participantCoupon: Integer;
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
-  ContextManager.IContextManager_SuspendParticipation(participantCoupon);
+  contextManager.IContextManager_SuspendParticipation(participantCoupon);
 end;
 
 procedure TRestServer.ContextManager_UndoContextChanges(request: TFormRequest; response: TFormResponse);
@@ -434,47 +443,47 @@ var
   contextCoupon: Integer;
 begin
   contextCoupon := request.ParamInt['contextCoupon'];
-  ContextManager.IContextManager_UndoContextChanges(contextCoupon);
+  contextManager.IContextManager_UndoContextChanges(contextCoupon);
 end;
 
 //************************** ContextData **************************/
 
 procedure TRestServer.ContextData_GetItemNames(request: TFormRequest; response: TFormResponse);
 var
-  itemNames: String;
+  itemNames: OleVariant;
   contextCoupon: Integer;
 begin
   contextCoupon := request.ParamInt['contextCoupon'];
-  itemNames := SerializeArray(ContextManager.IContextData_GetItemNames(contextCoupon));
-  response.Param['names'] := itemNames;
+  itemNames := contextManager.IContextData_GetItemNames(contextCoupon);
+  response.ParamVariant['names'] := itemNames;
 end;
 
 procedure TRestServer.ContextData_GetItemValues(request: TFormRequest; response: TFormResponse);
 var
-  itemValues: String;
   contextCoupon: Integer;
   itemNames: OleVariant;
+  itemValues: OleVariant;
   onlyChanges: Boolean;
 begin
   contextCoupon := request.ParamInt['contextCoupon'];
   itemNames := request.ParamArray['itemNames'];
   onlyChanges := request.ParamBool['onlyChanges'];
-  itemValues := SerializeArray(ContextManager.IContextData_GetItemValues(itemNames, onlyChanges, contextCoupon));
-  response.Param['values'] := itemNames;
+  itemValues := contextManager.IContextData_GetItemValues(itemNames, onlyChanges, contextCoupon);
+  response.ParamVariant['values'] := itemValues;
 end;
 
 procedure TRestServer.ContextData_SetItemValues(request: TFormRequest; response: TFormResponse);
 var
-  itemValues: String;
   participantCoupon: Integer;
   contextCoupon: Integer;
   itemNames: OleVariant;
+  itemValues: OleVariant;
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
   contextCoupon := request.ParamInt['contextCoupon'];
   itemNames := request.ParamArray['itemNames'];
   itemValues := request.ParamArray['itemValues'];
-  ContextManager.IContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
+  contextManager.IContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
 end;
 
 //************************** SecureContextData **************************/
@@ -485,7 +494,7 @@ var
   contextCoupon: Integer;
 begin
   contextCoupon := request.ParamInt['contextCoupon'];
-  itemNames := SerializeArray(ContextManager.ISecureContextData_GetItemNames(contextCoupon));
+  itemNames := SerializeArray(contextManager.ISecureContextData_GetItemNames(contextCoupon));
   response.Param['names'] := itemNames;
 end;
 
@@ -504,9 +513,9 @@ begin
   itemNames := request.ParamArray['itemNames'];
   onlyChanges := request.ParamBool['onlyChanges'];
   appSignature := request.Param['appSignature'];
-  itemValues := ContextManager.ISecureContextData_GetItemValues(
+  itemValues := contextManager.ISecureContextData_GetItemValues(
     participantCoupon, itemNames, onlyChanges, contextCoupon, appSignature, managerSignature);
-  response.ParamVariant['values'] := itemNames;
+  response.ParamVariant['values'] := itemValues;
   response.Param['managerSignature'] := managerSignature;
 end;
 
@@ -523,7 +532,7 @@ begin
   appSignature := request.Param['appSignature'];
   itemNames := request.ParamArray['itemNames'];
   itemValues := request.ParamArray['itemValues'];
-  ContextManager.ISecureContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon, appSignature);
+  contextManager.ISecureContextData_SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon, appSignature);
 end;
 
 //************************** ContextFilter **************************/
@@ -534,7 +543,7 @@ var
   subjectNames: OleVariant;
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
-  subjectNames := ContextManager.IContextFilter_GetSubjectsOfInterest(participantCoupon);
+  subjectNames := contextManager.IContextFilter_GetSubjectsOfInterest(participantCoupon);
   response.ParamVariant['subjectNames'] := subjectNames;
 end;
 
@@ -543,7 +552,7 @@ var
   participantCoupon: Integer;
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
-  ContextManager.IContextFilter_ClearFilter(participantCoupon);
+  contextManager.IContextFilter_ClearFilter(participantCoupon);
 end;
 
 procedure TRestServer.ContextFilter_SetSubjectsOfInterest(request: TFormRequest; response: TFormResponse);
@@ -553,7 +562,7 @@ var
 begin
   participantCoupon := request.ParamInt['participantCoupon'];
   subjectNames := request.ParamArray['subjectNames'];
-  ContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon, subjectNames);
+  contextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon, subjectNames);
 end;
 
 procedure TRestServer.httpServerAfterBind(Sender: TObject);
@@ -568,7 +577,8 @@ end;
 procedure TRestServer.TimerTimer(Sender: TObject);
 begin
   timer.Enabled := False;
-  ContextManager := TContextManager.Create(DefaultSession);
+  contextManager := TContextManager(CoContextManager.Create);
+  Log('Created context manager for CCOW services', []);
 end;
 
 end.

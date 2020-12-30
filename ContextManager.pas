@@ -177,11 +177,8 @@ begin
   if ExceptObject is Exception
   then session.LogException(Exception(ExceptObject));
 
-  if ExceptObject is TContextException
-  then Result := TContextException(ExceptObject).Code
-  else Result := inherited SafeCallException(ExceptObject, ExceptAddr);
-
   session.LogEnd;
+  Result := inherited SafeCallException(ExceptObject, ExceptAddr);
 end;
 
 //************************** IContextManager **************************/

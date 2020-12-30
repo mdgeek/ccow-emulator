@@ -130,7 +130,7 @@ begin
   Result := TStringList.Create;
 
   for i := VarArrayLowBound(varArray, 1) to VarArrayHighBound(varArray, 1) do
-    Result.Add(VarToStr(varArray[i]));
+    Result.Add(varArray[i]);
 end;
 
 {
@@ -171,6 +171,7 @@ end;
 function SerializeArray(list: TStrings): String; overload;
 begin
   list.Delimiter := '|';
+  list.QuoteChar := #0;
   Result := list.DelimitedText;
 end;
 
@@ -222,6 +223,7 @@ begin
   then Result := ''
   else begin
     form.Delimiter := '&';
+    form.QuoteChar := #0;
 
     for i := 0 to form.Count - 1 do
       form.ValueFromIndex[i] := EncodeParameter(form.ValueFromIndex[i]);
@@ -236,7 +238,8 @@ end;
 function DecodeForm(form: String): TStrings;
 begin
   Result := TStringList.Create;
-  Result.Delimiter := '|';
+  Result.Delimiter := '&';
+  Result.QuoteChar := #0;
 
   if form <> ''
   then Result.DelimitedText := form;

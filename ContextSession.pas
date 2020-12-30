@@ -7,18 +7,6 @@ uses
 
 type
   {
-    An exception that includes a result code.
-  }
-  TContextException = class(Exception)
-  private
-    FCode: HRESULT;
-  protected
-    constructor Create(text: String; code: HRESULT);
-  public
-    property Code: HRESULT read FCode;
-  end;
-
-  {
     A context session.  Each context session maintains its own current and pending
     contexts and a list of participants.  A new session form is created for each
     session.
@@ -110,7 +98,8 @@ var
 
 implementation
 
-uses MainForm, ContextManager;
+uses
+  MainForm, ContextManager, ComObj;
 
 const
   E_FAIL = HRESULT($80004005);
@@ -145,6 +134,15 @@ begin
 
   currentContext := nil;
   pendingContext := nil;
+
+  {$IFDEF DEBUG}
+  currentContext := CreateContext(CreateParticipant(nil, 'test', false, false));
+  currentContext^.contextItems.Values['item1'] := 'value1';
+  currentContext^.contextItems.Values['item2'] := 'value2';
+  currentContext^.contextItems.Values['item3'] := 'value3';
+  currentContext^.contextItems.Values['item4'] := 'value4';
+  sessionForm.CurrentContext := currentContext;
+  {$ENDIF}
 
   changed := TObject.Create;
 end;
@@ -902,7 +900,7 @@ end;
 }
 procedure TContextSession.Throw(text: String; code: HRESULT);
 begin
-  raise TContextException.Create(text, code);
+  raise EOleSysError.Create(text, code, -1);
 end;
 
 {
@@ -911,15 +909,6 @@ end;
 procedure TContextSession.Throw(text: String; code: HRESULT; params: array of const);
 begin
   Throw(Format(text, params), code);
-end;
-
-{
-  Creates an exception with the specified text and result code.
-}
-constructor TContextException.Create(text: String; code: HRESULT);
-begin
-  inherited Create(text);
-  FCode := code;
 end;
 
 end.

@@ -14,6 +14,7 @@ type
     function Execute(method: String; params: TStrings): TStrings;
   public
     constructor Create(url: String);
+    destructor Destroy; override;
     function ContextChangesPending(contextCoupon: Integer; var reason: WideString): WideString; safecall;
     procedure ContextChangesAccepted(contextCoupon: Integer); safecall;
     procedure ContextChangesCanceled(contextCoupon: Integer); safecall;
@@ -24,12 +25,17 @@ type
 implementation
 
 uses
-  ServerModule, Common;
+  Common;
 
 constructor TParticipant.Create(url: String);
 begin
   Self.url := url;
-  client := TIdHttp.Create(RestServer);
+end;
+
+destructor TParticipant.Destroy;
+begin
+  FreeAndNil(client);
+  inherited;
 end;
 
 function TParticipant.ContextChangesPending(contextCoupon: Integer; var reason: WideString): WideString;
@@ -86,6 +92,9 @@ function TParticipant.Execute(method: String; params: TStrings): TStrings;
 var
   fullUrl: String;
 begin
+  if client = nil
+  then client := TIdHttp.Create;
+
   fullUrl := Format('%s?interface=ContextParticipant&method=%s&%s',
     [url, method, encodeForm(params)]);
   Result := DecodeForm(client.Get(fullUrl));
