@@ -577,7 +577,7 @@ end;
 procedure TRestServer.TimerTimer(Sender: TObject);
 begin
   timer.Enabled := False;
-  contextManager := TContextManager(CoContextManager.Create);
+  contextManager := TContextManager.Create(DefaultSession);
   Log('Created context manager for CCOW services', []);
 end;
 

@@ -17,6 +17,10 @@ type
 
   public
 
+    constructor Create(session: TContextSession);
+    procedure Initialize; override;
+    function SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT; override;
+
     //************************** IContextManager **************************/
 
     function IContextManager.EndContextChanges = IContextManager_EndContextChanges;
@@ -145,30 +149,24 @@ type
     function IImplementationInformation.Get_WhenInstalled = IImplementationInformation_Get_WhenInstalled;
     function IImplementationInformation_Get_WhenInstalled: WideString; safecall;
 
-    procedure Initialize; override;
-    function SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT; override;
-
-    class function Create(session: TContextSession): TContextManager;
-
   end;
 
 implementation
 
 uses ComServ, Common, Variants;
 
-class function TContextManager.Create(session: TContextSession): TContextManager;
-var
-  contextManager: TContextManager;
+constructor TContextManager.Create(session: TContextSession);
 begin
-  contextManager := TContextManager(CoContextManager.Create);
-  contextManager.session := session;
-  Result := contextManager;
+  Self.session := session;
 end;
 
 procedure TContextManager.Initialize;
 begin
   inherited;
-  session := DefaultSession;
+
+  if session = nil
+  then session := DefaultSession;
+  
   Assert(session <> nil, 'No session!!', []);
 end;
 
