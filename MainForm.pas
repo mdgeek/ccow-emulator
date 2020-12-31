@@ -9,8 +9,6 @@ uses
 type
   TfrmMain = class(TForm)
     pages: TPageControl;
-    tabServices: TTabSheet;
-    memoServicesLog: TMemo;
     procedure FormCreate(Sender: TObject);
   public
     function CreateSession(sessionId: Integer): TSessionForm;

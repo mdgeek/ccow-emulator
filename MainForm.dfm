@@ -21,21 +21,7 @@ object frmMain: TfrmMain
     Top = 0
     Width = 730
     Height = 583
-    ActivePage = tabServices
     Align = alClient
     TabOrder = 0
-    object tabServices: TTabSheet
-      Caption = 'Services'
-      object memoServicesLog: TMemo
-        Left = 0
-        Top = 0
-        Width = 722
-        Height = 555
-        Align = alClient
-        ReadOnly = True
-        ScrollBars = ssBoth
-        TabOrder = 0
-      end
-    end
   end
 end

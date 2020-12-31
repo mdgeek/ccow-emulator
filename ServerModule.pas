@@ -111,7 +111,7 @@ implementation
 {$R *.dfm}
 
 uses
-  ContextSession, Participant, MainForm;
+  ContextSession, Participant;
 
 const
   INTF_CONTEXT_MANAGEMENT_REGISTRY = 'ContextManagementRegistry';
@@ -229,7 +229,7 @@ procedure TRestServer.DataModuleCreate(Sender: TObject);
 begin
   contextManager := TContextManager.Create(DefaultSession);
   handlers := TList.Create;
-  logger := TLogger.Create(frmMain.memoServicesLog.Lines);
+  logger := DefaultSession.Logger;
   
   AddHandler(INTF_CONTEXT_MANAGEMENT_REGISTRY, 'Locate', ContextManagementRegistry_Locate);
 
@@ -284,7 +284,6 @@ begin
   request := TRequest.Create(httpRequest);
   response := TResponse.Create(httpResponse);
   method := request.Method;
-  logger.LogStart(method);
   handler := FindHandler(method);
 
   if handler = nil
@@ -296,11 +295,9 @@ begin
   Except
     on e: Exception do begin
       response.SetException(500, e.Message);
-      logger.LogException(e);
     end;
   end;
 
-  logger.LogEnd;
   response.Write;
 end;
 
