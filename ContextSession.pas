@@ -3,8 +3,8 @@ unit ContextSession;
 interface
 
 uses
-  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows, SessionForm,
-  Common, ContextException;
+  CCOW_TLB, Classes, SysUtils, StrUtils, Variants, SessionForm,
+  Common, ContextException, Logger;
 
 type
   {
@@ -16,7 +16,8 @@ type
   private
     sessionId: Integer;
     sessionForm: TSessionForm;
-    logStack: TStrings;
+
+    FLogger: TLogger;
 
     participants: TList;
     nextParticipantCoupon: Integer;
@@ -47,8 +48,6 @@ type
 
     procedure SessionDestroy(Sender: TObject);
 
-    function LogIndent: String;
-
     procedure Throw(text: String; code: HRESULT); overload;
     procedure Throw(text: String; code: HRESULT; params: array of const); overload;
 
@@ -59,6 +58,8 @@ type
 
 
     property id: Integer read sessionId;
+
+    property Logger: TLogger read FLogger;
 
     procedure NotImplemented(message: String);
 
@@ -83,15 +84,6 @@ type
     procedure ClearFilter(participantCoupon: Integer);
     procedure SetSubjectsOfInterest(participantCoupon: Integer; subjectNames: OleVariant);
 
-    procedure Log(text: String); overload;
-    procedure Log(text: String; params: array of const); overload;
-    procedure LogActivity(participant: PParticipant; activity: String); overload;
-    procedure LogActivity(participantCoupon: Integer; activity: String); overload;
-    procedure LogActivity(context: PContext; activity: String); overload;
-    procedure LogException(e: Exception);
-    procedure LogStart(method: String);
-    procedure LogEnd();
-
   end;
 
 var
@@ -101,9 +93,6 @@ implementation
 
 uses
   MainForm, ContextManager, ComObj;
-
-const
-  LOG_INDENT = '> > > > > > > > > > > > > > > > > > > > ';
 
 var
   nextSessionId: Integer;
@@ -119,9 +108,9 @@ begin
   nextSessionId := nextSessionId + 1;
   sessionId := nextSessionId;
   sessionForm := frmMain.CreateSession(sessionId);
+  FLogger := TLogger.Create(sessionForm.memoActivityLog.Lines);
   sessionForm.OnDestroy := Self.SessionDestroy;
-  logStack := TStringList.Create;
-  LogStart('TContextSession.Create');
+  FLogger.LogStart('TContextSession.Create');
   participants := TList.Create;
 
   currentContext := nil;
@@ -159,10 +148,10 @@ end;
 }
 procedure TContextSession.SessionDestroy(Sender: TObject);
 begin
-  LogStart('TContextSession.SessionDestroy');
+  logger.LogStart('TContextSession.SessionDestroy');
   TerminateAllParticipants;
-  LogEnd;
-  LogEnd;
+  logger.LogEnd;
+  logger.LogEnd;
 end;
 
 //************************** Participant **************************/
@@ -187,7 +176,7 @@ begin
   participant^.filter := Null;
   AddParticipant(participant);
   sessionForm.AddParticipant(participant);
-  LogActivity(participant, 'joined the common context');
+  logger.LogActivity(participant, 'joined the common context');
   Result := nextParticipantCoupon;
 end;
 
@@ -200,7 +189,7 @@ var
   participant: PParticipant;
 begin
   participant := RemoveParticipant(participantCoupon);
-  LogActivity(participant, 'left the common context');
+  logger.LogActivity(participant, 'left the common context');
   sessionForm.RemoveParticipant(participant);
   participant^.contextParticipant := nil;
   Dispose(participant);
@@ -259,7 +248,7 @@ begin
   then action := 'canceled'
   else action := 'committed';
 
-  Log('Context change %s, notifying participants...', [action]);
+  Logger.Log('Context change %s, notifying participants...', [action]);
   count := 0;
   pList := CloneParticipantList;
 
@@ -275,24 +264,24 @@ begin
       Try
         if canceled
         then begin
-          LogStart('IContextParticipant.ContextChangesCanceled');
-          LogActivity(participant, 'is being notified');
+          logger.LogStart('IContextParticipant.ContextChangesCanceled');
+          logger.LogActivity(participant, 'is being notified');
           contextParticipant.ContextChangesCanceled(contextCoupon);
         end else begin
-          LogStart('IContextParticipant.ContextChangesAccepted');
-          LogActivity(participant, 'is being notified');
+          logger.LogStart('IContextParticipant.ContextChangesAccepted');
+          logger.LogActivity(participant, 'is being notified');
           contextParticipant.ContextChangesAccepted(contextCoupon);
         end;
       Except
         on e: Exception do
-          LogException(e);
+          Logger.LogException(e);
       end;
 
-      LogEnd;
+      logger.LogEnd;
     end;
   end;
 
-  Log('Notified %d out of %d participant(s)', [count, pList.Count]);
+  logger.Log('Notified %d out of %d participant(s)', [count, pList.Count]);
   pList.Free;
 end;
 
@@ -321,7 +310,7 @@ var
   end;
 
 begin
-  Log('Polling participants...');
+  Logger.Log('Polling participants...');
   count := 0;
   pList := CloneParticipantList;
 
@@ -334,8 +323,8 @@ begin
     then begin
       count := count + 1;
       contextParticipant := participant^.contextParticipant;
-      LogStart('IContextParticipant.ContextChangesPending');
-      LogActivity(participant, 'is being polled');
+      logger.LogStart('IContextParticipant.ContextChangesPending');
+      logger.LogActivity(participant, 'is being polled');
 
       Try
         response := AnsiLowerCase(contextParticipant.ContextChangesPending(pendingContext^.contextCoupon, reason));
@@ -346,23 +335,23 @@ begin
         end;
       end;
       
-      LogEnd;
+      logger.LogEnd;
 
       if response = 'accept'
       then begin
-         LogActivity(participant, 'accepted pending change');
+         logger.LogActivity(participant, 'accepted pending change');
       end else if response = 'conditionally_accept'
       then begin
-        LogActivity(participant, 'conditionally accepted pending change: ' + reason);
+        logger.LogActivity(participant, 'conditionally accepted pending change: ' + reason);
         AddReason(reason);
       end else begin
-       LogActivity(participant, 'returned an unrecognized response: ' + response);
+       logger.LogActivity(participant, 'returned an unrecognized response: ' + response);
        AddReason(reason);
       end;
     end;
   end;
 
-  Log('Polled %d out of %d participant(s)', [count, pList.Count]);
+  Logger.Log('Polled %d out of %d participant(s)', [count, pList.Count]);
   pList.Free;
   Result := reasons;
 end;
@@ -397,7 +386,7 @@ var
   participant: PParticipant;
   contextParticipant: IContextParticipant;
 begin
-  Log('Terminating all active participants...');
+  Logger.Log('Terminating all active participants...');
   pList := CloneParticipantList;
 
   for i := 0 to pList.Count - 1 do
@@ -411,7 +400,7 @@ begin
       contextParticipant.CommonContextTerminated;
     Except
       on E: Exception do
-        LogException(E);
+        Logger.LogException(E);
      end;
   end;
 
@@ -507,7 +496,7 @@ begin
 
   pendingContext := CreateContext(participantCoupon);
   sessionForm.pendingContext := nil;
-  LogActivity(pendingContext, 'started context change');
+  logger.LogActivity(pendingContext, 'started context change');
   Result := pendingContext^.contextCoupon;
 end;
 
@@ -594,7 +583,7 @@ begin
   end;
 
   NotifyParticipants(contextCoupon, Not(accept));
-  LogActivity(getContext(contextCoupon), 'published changes decision: ' + decision);
+  logger.LogActivity(getContext(contextCoupon), 'published changes decision: ' + decision);
 
   if accept
   then ClearChanged(currentContext^.contextItems)
@@ -607,7 +596,7 @@ end;
 procedure TContextSession.UndoContextChanges(contextCoupon: Integer);
 begin
   ValidatePendingContext(contextCoupon, -1);
-  LogActivity(pendingContext, 'is undoing context changes');
+  logger.LogActivity(pendingContext, 'is undoing context changes');
   DestroyContext(pendingContext);
   sessionForm.pendingContext := nil;
 end;
@@ -636,7 +625,7 @@ var
   i: Integer;
 begin
   if participantCoupon >= 0
-  then LogActivity(participantCoupon, 'is retrieving item values');
+  then logger.LogActivity(FindParticipant(participantCoupon), 'is retrieving item values');
 
   items := GetContext(contextCoupon)^.contextItems;
   matches := TStringList.Create;
@@ -662,7 +651,7 @@ var
   value: String;
 begin
   ValidatePendingContext(contextCoupon, participantCoupon);
-  LogActivity(pendingContext, 'is setting item values');
+  logger.LogActivity(pendingContext, 'is setting item values');
   items := pendingContext^.contextItems;
 
   for i := VarArrayLowBound(itemNames, 1) to VarArrayHighBound(itemNames, 1) do begin
@@ -678,7 +667,7 @@ begin
       j := items.AddObject(name + '=' + value, Changed);
     end;
 
-    Log('  %s', [items[j]]);
+    Logger.Log('  %s', [items[j]]);
   end;
 
   sessionForm.pendingContext := pendingContext;
@@ -703,7 +692,7 @@ begin
   then Throw('Participant [pc#%d] did not initiate this transaction [cc#%d]',
     E_INVALID_CONTEXT_COUPON, [participantCoupon, contextCoupon]);
 
-  Log('Pending context coupon [cc#%d] is valid', [contextCoupon]);
+  Logger.Log('Pending context coupon [cc#%d] is valid', [contextCoupon]);
 end;
 
 //************************** Context Filters **************************/
@@ -782,99 +771,6 @@ begin
     then AddItem(i);
   end;
 
-end;
-
-//************************** Logging **************************/
-
-{
-  Returns a prefix string for the current indent level.
-}
-function TContextSession.LogIndent: String;
-begin
-  Result := RightStr(LOG_INDENT, logStack.Count * 2);
-end;
-
-{
-  Logs text to the session form's log window.
-}
-procedure TContextSession.Log(text: String);
-begin
-  sessionForm.Log(LogIndent + text);
-end;
-
-{
-  Logs parameterized text to the session form's log window.
-}
-procedure TContextSession.Log(text: String; params: array of const);
-begin
-  sessionForm.Log(LogIndent + text, params);
-end;
-
-{
-  Logs a participant activity.
-}
-procedure TContextSession.LogActivity(participant: PParticipant; activity: String);
-begin
-  if (participant <> nil)
-  then begin
-    Log('%s [pc#%d] %s', [participant^.title, participant^.participantCoupon, activity]);
-  end;
-end;
-
-{
-  Logs a participant activity.
-}
-procedure TContextSession.LogActivity(participantCoupon: Integer; activity: String);
-begin
-  LogActivity(FindParticipant(ParticipantCoupon), activity);
-end;
-
-{
-  Logs a context activity.
-}
-procedure TContextSession.LogActivity(context: PContext; activity: String);
-var
-  participant: PParticipant;
-begin
-  participant := context^.participant;
-  Log('%s [pc#%d] %s [cc#%d]', [participant^.title, participant^.participantCoupon,
-    activity, context^.contextCoupon]);
-end;
-
-{
-  Logs the start of a method invocation.
-}
-procedure TContextSession.LogStart(method: String);
-begin
-  Log('Entering %s [thread#%d]', [method, GetCurrentThreadId]);
-  logStack.Add(method);
-end;
-
-{
-` Logs the end of a method invocation.
-}
-procedure TContextSession.LogEnd();
-var
-  method: String;
-  i: Integer;
-begin
-  i := logStack.Count - 1;
-
-  if i >= 0
-  then begin
-    method := logStack[i];
-    logStack.Delete(i);
-    Log('Exited %s', [method]);
-  end else LogException(Exception.Create('Log end past end of stack'));
-
-end;
-
-{
-  Logs an exception,
-}
-procedure TContextSession.LogException(e: Exception);
-begin
-  Log('An error occured: %s', [e.Message]);
 end;
 
 //************************** Exception Handling **************************/

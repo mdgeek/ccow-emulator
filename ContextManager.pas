@@ -6,7 +6,7 @@ interface
 
 uses
   ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl, Forms,
-  ContextSession, ContextException;
+  ContextSession, ContextException, Logger;
 
 type
   TContextManager = class(TAutoObject, IContextManager, IContextData,
@@ -15,6 +15,7 @@ type
 
   private
     session: TContextSession;
+    logger: TLogger;
 
   public
 
@@ -170,18 +171,19 @@ begin
   then session := DefaultSession;
   
   Assert(session <> nil, 'No session!!', []);
+  logger := session.Logger;
 end;
 
 function TContextManager.SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT;
 begin
   if ExceptObject is Exception
-  then session.LogException(Exception(ExceptObject));
+  then session.Logger.LogException(Exception(ExceptObject));
 
   if ExceptObject is TContextException
   then Result := TContextException(ExceptObject).Code
   else Result := inherited SafeCallException(ExceptObject, ExceptAddr);
 
-  session.LogEnd;
+  session.Logger.LogEnd;
 end;
 
 //************************** IContextManager **************************/
@@ -192,19 +194,19 @@ function TContextManager.IContextManager_JoinCommonContext(
 const
   method = 'IContextManager.JoinCommonContext';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.CreateParticipant(contextParticipant,
     sApplicationTitle, survey, wait);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextManager_LeaveCommonContext(participantCoupon: Integer);
 const
   method = 'IContextManager.LeaveCommonContext';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.DestroyParticipant(participantCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextManager_ResumeParticipation(participantCoupon: Integer;
@@ -212,37 +214,37 @@ procedure TContextManager.IContextManager_ResumeParticipation(participantCoupon:
 const
   method = 'IContextManager.ResumeParticipation';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.SuspendParticipant(participantCoupon, False);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextManager_SuspendParticipation(participantCoupon: Integer);
 const
   method = 'IContextManager.SuspendParticipation';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.SuspendParticipant(participantCoupon, True);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 function TContextManager.IContextManager_Get_MostRecentcontextCoupon: Integer;
 const
   method = 'IContextManager.Get_MostRecentContextCoupon';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.CurrentContextCoupon;
-  session.Log('Returned: ' + IntToStr(Result));
-  session.LogEnd;
+  Logger.Log('Returned: ' + IntToStr(Result));
+  Logger.LogEnd;
 end;
 
 function TContextManager.IContextManager_StartContextChanges(participantCoupon: Integer): Integer;
 const
   method = 'IContextManager.StartContextChanges';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.StartContextChanges(participantCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 function TContextManager.IContextManager_EndContextChanges(contextCoupon: Integer;
@@ -250,9 +252,9 @@ function TContextManager.IContextManager_EndContextChanges(contextCoupon: Intege
 const
   method = 'IContextManager.EndContextChanges';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.EndContextChanges(contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextManager_PublishChangesDecision(contextCoupon: Integer;
@@ -260,18 +262,18 @@ procedure TContextManager.IContextManager_PublishChangesDecision(contextCoupon: 
 const
   method = 'IContextManager.PublishChangesDecision';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.PublishChangesDecision(contextCoupon, decision);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextManager_UndoContextChanges(contextCoupon: Integer);
 const
   method = 'IContextManager.UndoContextChanges';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.UndoContextChanges(contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 //************************** IContextData **************************/
@@ -280,9 +282,9 @@ function TContextManager.IContextData_GetItemNames(contextCoupon: Integer): OleV
 const
   method = 'IContextData.GetItemNames';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.GetItemNames(contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 function TContextManager.IContextData_GetItemValues(itemNames: OleVariant;
@@ -290,9 +292,9 @@ function TContextManager.IContextData_GetItemValues(itemNames: OleVariant;
 const
   method = 'IContextData.GetItemValues';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.GetItemValues(-1, itemNames, onlyChanges, contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextData_DeleteItems(participantCoupon: Integer;
@@ -300,9 +302,9 @@ procedure TContextManager.IContextData_DeleteItems(participantCoupon: Integer;
 const
   method = 'IContextData.DeleteItems';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.NotImplemented('IContextData.DeleteItems is deprecated');
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextData_SetItemValues(participantCoupon: Integer;
@@ -310,9 +312,9 @@ procedure TContextManager.IContextData_SetItemValues(participantCoupon: Integer;
 const
   method = 'IContextData.SetItemValues';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 //************************** ISecureContextData **************************/
@@ -322,9 +324,9 @@ function TContextManager.ISecureContextData_GetItemNames(
 const
   method = 'ISecureContextData.GetItemNames';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.GetItemNames(contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 function TContextManager.ISecureContextData_GetItemValues(
@@ -334,9 +336,9 @@ function TContextManager.ISecureContextData_GetItemValues(
 const
   method = 'ISecureContextData.GetItemValues';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.GetItemValues(participantCoupon, itemNames, onlyChanges, contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.ISecureContextData_SetItemValues(
@@ -345,9 +347,9 @@ procedure TContextManager.ISecureContextData_SetItemValues(
 const
   method = 'ISecureContextData.SetItemValues';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.SetItemValues(participantCoupon, itemNames, itemValues, contextCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 //************************** ISecureBinding **************************/
@@ -357,8 +359,8 @@ function TContextManager.ISecureBinding_FinalizeBinding(bindeeCoupon: Integer;
 const
   method = 'ISecureBinding.FinalizeBinding';
 begin
-  session.LogStart(method);
-  session.LogEnd;
+  Logger.LogStart(method);
+  Logger.LogEnd;
 end;
 
 function TContextManager.ISecureBinding_InitializeBinding(bindeeCoupon: Integer;
@@ -367,8 +369,8 @@ function TContextManager.ISecureBinding_InitializeBinding(bindeeCoupon: Integer;
 const
   method = 'ISecureBinding.InitializeBinding';
 begin
-  session.LogStart(method);
-  session.LogEnd;
+  Logger.LogStart(method);
+  Logger.LogEnd;
 end;
 
 //************************** IContextAction **************************/
@@ -380,7 +382,7 @@ function TContextManager.IContextAction_Perform(participantCoupon: Integer; item
 const
   method = 'IContextAction.Perform';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.NotImplemented('IContextAction.Perform is not implemented');
 end;
 
@@ -391,18 +393,18 @@ function TContextManager.IContextFilter_GetSubjectsOfInterest(
 const
   method = 'IContextFilter.GetSubjectsOfInterest';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := session.GetSubjectsOfInterest(participantCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextFilter_ClearFilter(participantCoupon: Integer);
 const
   method = 'IContextFilter.ClearFilter';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.ClearFilter(participantCoupon);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon: Integer;
@@ -410,9 +412,9 @@ procedure TContextManager.IContextFilter_SetSubjectsOfInterest(participantCoupon
 const
   method = 'IContextFilter.SetSubjectsOfInterest';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.SetSubjectsOfInterest(participantCoupon, subjectNames);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 //************************** IContextSession **************************/
@@ -421,9 +423,9 @@ function TContextManager.IContextSession_Create: IDispatch;
 const
   method = 'IContextSession.Create';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   Result := TContextManager.Create(TContextSession.Create);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 procedure TContextManager.IContextSession_Activate(
@@ -432,9 +434,9 @@ procedure TContextManager.IContextSession_Activate(
 const
   method = 'IContextSession.Activate';
 begin
-  session.LogStart(method);
+  Logger.LogStart(method);
   session.SessionActivate(participantCoupon, cmToActivate, nonce, appSignature);
-  session.LogEnd;
+  Logger.LogEnd;
 end;
 
 //************************** IImplementationInformation **************************/

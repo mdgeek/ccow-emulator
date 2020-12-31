@@ -15,7 +15,6 @@ type
   public
     function CreateSession(sessionId: Integer): TSessionForm;
     procedure OnLastRelease(var Shutdown: Boolean);
-    procedure LogServiceActivity(activity: String);
   end;
 
 var
@@ -43,11 +42,6 @@ begin
   sessionForm.Show;
   Result := sessionForm;
   pages.ActivePage := tab;
-end;
-
-procedure TFrmMain.LogServiceActivity(activity: String);
-begin
-  memoServicesLog.Lines.Add(activity);
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);

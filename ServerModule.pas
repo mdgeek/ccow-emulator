@@ -5,7 +5,7 @@ interface
 uses
   SysUtils, Classes, StrUtils, IdBaseComponent, IdComponent, IdCustomTCPServer,
   IdCustomHTTPServer, IdHTTPServer, IdContext, IdTCPServer, IdUri, Common, CCOW_TLB,
-  IdTCPConnection, IdTCPClient, ExtCtrls, Variants, Windows, ContextManager;
+  IdTCPConnection, IdTCPClient, ExtCtrls, Variants, Windows, ContextManager, Logger;
 
 type
   TFormRequest = class
@@ -64,8 +64,10 @@ type
   private
     contextManager: TContextManager;
     handlers: TList;
+    logger: TLogger;
     procedure AddHandler(intf: String; method: String; handler: THandlerProc);
     function FindHandler(method: String): THandler;
+    procedure Log(activity: String; params: array of const);
 
     //************************** ContextManagementRegistry **************************/
 
@@ -118,16 +120,6 @@ const
   INTF_CONTEXT_DATA = 'ContextData';
   INTF_SECURE_CONTEXT_DATA = 'SecureContextData';
   INTF_CONTEXT_FILTER = 'ContextFilter';
-
-//************************** Logging **************************/
-
-{
-  Logs activity on the main form.
-}
-procedure Log(activity: String; params: array of const);
-begin
-  frmMain.LogServiceActivity(Format('[%d] ', [GetCurrentThreadId]) + Format(activity, params));
-end;
 
 //************************** TFormRequest **************************/
 
@@ -238,7 +230,8 @@ procedure TRestServer.DataModuleCreate(Sender: TObject);
 begin
   contextManager := TContextManager.Create(DefaultSession);
   handlers := TList.Create;
-
+  logger := TLogger.Create(frmMain.memoServicesLog.Lines);
+  
   AddHandler(INTF_CONTEXT_MANAGEMENT_REGISTRY, 'Locate', ContextManagementRegistry_Locate);
 
   AddHandler(INTF_CONTEXT_MANAGER, 'EndContextChanges', ContextManager_EndContextChanges);
@@ -335,6 +328,16 @@ begin
     end;
   end;
 
+end;
+
+//************************** Logging **************************/
+
+{
+  Logs activity on the main form.
+}
+procedure TRestServer.Log(activity: String; params: array of const);
+begin
+  logger.Log(Format('[%d] ', [GetCurrentThreadId]) + Format(activity, params));
 end;
 
 //************************** ContextManagementRegistry **************************/

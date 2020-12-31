@@ -10,7 +10,8 @@ uses
   MainForm in 'MainForm.pas' {frmMain},
   ServerModule in 'ServerModule.pas' {RestServer: TDataModule},
   Participant in 'Participant.pas',
-  ContextException in 'ContextException.pas';
+  ContextException in 'ContextException.pas',
+  Logger in 'Logger.pas';
 
 {$R *.TLB}
 

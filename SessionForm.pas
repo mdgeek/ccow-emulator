@@ -33,12 +33,9 @@ type
   public
     property CurrentContext: PContext write SetCurrentContext;
     property PendingContext: PContext write SetPendingContext;
-
     procedure AddParticipant(participant: PParticipant);
     procedure RemoveParticipant(participant: PParticipant);
 
-    procedure Log(text: String); overload;
-    procedure Log(text: String; params: array of const); overload;
   end;
 
 implementation
@@ -46,16 +43,6 @@ implementation
 uses MainForm;
 
 {$R *.dfm}
-
-procedure TSessionForm.Log(text: String);
-begin
-  memoActivityLog.Lines.Add(text);
-end;
-
-procedure TSessionForm.Log(text: String; params: array of const);
-begin
-  Log(Format(text, params));
-end;
 
 procedure TSessionForm.AddParticipant(participant: PParticipant);
 begin
