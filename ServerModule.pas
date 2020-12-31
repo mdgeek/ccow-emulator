@@ -56,13 +56,11 @@ type
 
   TRestServer = class(TDataModule)
     httpServer: TIdHTTPServer;
-    Timer: TTimer;
     procedure httpServerCommandGet(context: TIdContext;
       httpRequest: TIdHTTPRequestInfo; httpResponse: TIdHTTPResponseInfo);
     procedure DataModuleCreate(Sender: TObject);
     procedure httpServerAfterBind(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
-    procedure TimerTimer(Sender: TObject);
   private
     contextManager: TContextManager;
     handlers: TList;
@@ -238,6 +236,7 @@ end;
 
 procedure TRestServer.DataModuleCreate(Sender: TObject);
 begin
+  contextManager := TContextManager.Create(DefaultSession);
   handlers := TList.Create;
 
   AddHandler(INTF_CONTEXT_MANAGEMENT_REGISTRY, 'Locate', ContextManagementRegistry_Locate);
@@ -568,17 +567,6 @@ end;
 procedure TRestServer.httpServerAfterBind(Sender: TObject);
 begin
   Log('CCOW services available on port %d', [httpServer.DefaultPort]);
-end;
-
-{
-  Create the underlying context manager instance on a delay to allow
-  COM initialization to complete beforehand.
-}
-procedure TRestServer.TimerTimer(Sender: TObject);
-begin
-  timer.Enabled := False;
-  contextManager := TContextManager.Create(DefaultSession);
-  Log('Created context manager for CCOW services', []);
 end;
 
 end.

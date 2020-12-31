@@ -18,9 +18,4 @@ object RestServer: TRestServer
     Left = 208
     Top = 96
   end
-  object Timer: TTimer
-    OnTimer = TimerTimer
-    Left = 280
-    Top = 96
-  end
 end

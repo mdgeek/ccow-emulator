@@ -158,6 +158,7 @@ uses ComServ, Common, Variants;
 constructor TContextManager.Create(session: TContextSession);
 begin
   Self.session := session;
+  Initialize;
 end;
 
 procedure TContextManager.Initialize;
