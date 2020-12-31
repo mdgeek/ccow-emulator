@@ -5,7 +5,7 @@ interface
 uses
   SysUtils, Classes, StrUtils, IdBaseComponent, IdComponent, IdCustomTCPServer,
   IdCustomHTTPServer, IdHTTPServer, IdContext, IdTCPServer, IdUri, Common, CCOW_TLB,
-  IdTCPConnection, IdTCPClient, ExtCtrls, Variants, Windows, ContextManager, Logger;
+  IdTCPConnection, IdTCPClient, ExtCtrls, Variants, ContextManager, Logger;
 
 type
   TFormRequest = class
@@ -67,7 +67,6 @@ type
     logger: TLogger;
     procedure AddHandler(intf: String; method: String; handler: THandlerProc);
     function FindHandler(method: String): THandler;
-    procedure Log(activity: String; params: array of const);
 
     //************************** ContextManagementRegistry **************************/
 
@@ -260,7 +259,7 @@ begin
     httpServer.Active := True;
   Except
     on e: Exception do
-      Log('CCOW service initialization failed: %s', [e.Message]);
+      logger.LogException(e);
   end;
 end;
 
@@ -285,23 +284,23 @@ begin
   request := TFormRequest.Create(httpRequest);
   response := TFormResponse.Create(httpResponse);
   method := request.Method;
-  Log('Entering %s', [method]);
+  logger.LogStart(method);
   handler := FindHandler(method);
 
   if handler = nil
   then begin
     response.SetException(404, 'NotFound');
-    Log('Unknown service %s', [method]);
+    logger.Log('Unknown service %s', [method]);
   end else Try
     handler.handler(request, response);
-    Log('Exited %s', [handler.method]);
   Except
     on e: Exception do begin
       response.SetException(500, e.Message);
-      Log('%s returned an error: %s', [handler.method, e.Message]);
+      logger.LogException(e);
     end;
   end;
 
+  logger.LogEnd;
   response.Write;
 end;
 
@@ -328,16 +327,6 @@ begin
     end;
   end;
 
-end;
-
-//************************** Logging **************************/
-
-{
-  Logs activity on the main form.
-}
-procedure TRestServer.Log(activity: String; params: array of const);
-begin
-  logger.Log(Format('[%d] ', [GetCurrentThreadId]) + Format(activity, params));
 end;
 
 //************************** ContextManagementRegistry **************************/
@@ -569,7 +558,7 @@ end;
 
 procedure TRestServer.httpServerAfterBind(Sender: TObject);
 begin
-  Log('CCOW services available on port %d', [httpServer.DefaultPort]);
+  logger.Log('CCOW services available on port %d', [httpServer.DefaultPort]);
 end;
 
 end.
