@@ -5,7 +5,8 @@ unit ContextManager;
 interface
 
 uses
-  ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl, ContextSession, Forms;
+  ComObj, ActiveX, CCOW_TLB, Classes, SysUtils, StdVcl, Forms,
+  ContextSession, ContextException;
 
 type
   TContextManager = class(TAutoObject, IContextManager, IContextData,

@@ -9,7 +9,8 @@ uses
   ContextManager in 'ContextManager.pas' {ContextManager: CoClass},
   MainForm in 'MainForm.pas' {frmMain},
   ServerModule in 'ServerModule.pas' {RestServer: TDataModule},
-  Participant in 'Participant.pas';
+  Participant in 'Participant.pas',
+  ContextException in 'ContextException.pas';
 
 {$R *.TLB}
 

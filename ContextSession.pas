@@ -3,21 +3,10 @@ unit ContextSession;
 interface
 
 uses
-  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows, SessionForm, Common;
+  CCOW_TLB, StdVcl, Classes, SysUtils, StrUtils, Variants, Windows, SessionForm,
+  Common, ContextException;
 
 type
-  {
-    An exception that includes a result code.
-  }
-  TContextException = class(Exception)
-  private
-    FCode: HRESULT;
-  protected
-    constructor Create(text: String; code: HRESULT);
-  public
-    property Code: HRESULT read FCode;
-  end;
-
   {
     A context session.  Each context session maintains its own current and pending
     contexts and a list of participants.  A new session form is created for each
@@ -114,15 +103,6 @@ uses
   MainForm, ContextManager, ComObj;
 
 const
-  E_FAIL = HRESULT($80004005);
-  E_TRANSACTION_IN_PROGRESS = HRESULT($80000209);
-  E_NOT_IN_TRANSACTION = HRESULT($80000207);
-  E_INVALID_TRANSACTION = HRESULT($80000211);
-  E_INVALID_CONTEXT_COUPON = HRESULT($80000203);
-  E_UNKNOWN_PARTICIPANT = HRESULT($8000020B);
-  E_ACCEPT_NOT_POSSIBLE = HRESULT($8000020D);
-  E_FILTER_NOT_SET = HRESULT($80000225);
-
   LOG_INDENT = '> > > > > > > > > > > > > > > > > > > > ';
 
 var
@@ -898,15 +878,6 @@ begin
 end;
 
 //************************** Exception Handling **************************/
-
-{
-  Creates an exception with the specified text and result code.
-}
-constructor TContextException.Create(text: String; code: HRESULT);
-begin
-  inherited Create(text);
-  FCode := code;
-end;
 
 {
   Raises a 'not implemented' exception.
