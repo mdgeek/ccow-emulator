@@ -202,7 +202,7 @@ end;
 
 procedure TFormResponse.SetParamVariant(name: String; value: Variant);
 begin
-  if value = Null
+  if VarIsNull(value)
   then SetParamStr(name, '')
   else if VarIsArray(value)
   then SetParamStr(name, SerializeArray(value))

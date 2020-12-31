@@ -7,6 +7,18 @@ uses
 
 type
   {
+    An exception that includes a result code.
+  }
+  TContextException = class(Exception)
+  private
+    FCode: HRESULT;
+  protected
+    constructor Create(text: String; code: HRESULT);
+  public
+    property Code: HRESULT read FCode;
+  end;
+
+  {
     A context session.  Each context session maintains its own current and pending
     contexts and a list of participants.  A new session form is created for each
     session.
@@ -18,7 +30,7 @@ type
     logStack: TStrings;
 
     participants: TList;
-    nextparticipantCoupon: Integer;
+    nextParticipantCoupon: Integer;
 
     currentContext: PContext;
     pendingContext: PContext;
@@ -888,6 +900,15 @@ end;
 //************************** Exception Handling **************************/
 
 {
+  Creates an exception with the specified text and result code.
+}
+constructor TContextException.Create(text: String; code: HRESULT);
+begin
+  inherited Create(text);
+  FCode := code;
+end;
+
+{
   Raises a 'not implemented' exception.
 }
 procedure TContextSession.NotImplemented(message: String);
@@ -900,7 +921,7 @@ end;
 }
 procedure TContextSession.Throw(text: String; code: HRESULT);
 begin
-  raise EOleSysError.Create(text, code, -1);
+  raise TContextException.Create(text, code);
 end;
 
 {
