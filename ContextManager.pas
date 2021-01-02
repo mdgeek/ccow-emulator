@@ -15,7 +15,8 @@ type
 
   private
     session: TContextSession;
-    logger: TLogger;
+    function GetLogger: TLogger;
+    property Logger: TLogger read GetLogger;
 
   public
 
@@ -160,7 +161,6 @@ uses ComServ, Common, Variants;
 constructor TContextManager.Create(session: TContextSession);
 begin
   Self.session := session;
-  Initialize;
 end;
 
 procedure TContextManager.Initialize;
@@ -171,19 +171,23 @@ begin
   then session := DefaultSession;
   
   Assert(session <> nil, 'No session!!', []);
-  logger := session.Logger;
 end;
 
 function TContextManager.SafeCallException(ExceptObject: TObject; ExceptAddr: Pointer): HRESULT;
 begin
   if ExceptObject is Exception
-  then session.Logger.LogException(Exception(ExceptObject));
+  then Logger.LogException(Exception(ExceptObject));
 
   if ExceptObject is TContextException
   then Result := TContextException(ExceptObject).Code
   else Result := inherited SafeCallException(ExceptObject, ExceptAddr);
 
-  session.Logger.LogEnd;
+  Logger.LogEnd;
+end;
+
+function TContextManager.GetLogger: TLogger;
+begin
+  Result := session.Logger;
 end;
 
 //************************** IContextManager **************************/

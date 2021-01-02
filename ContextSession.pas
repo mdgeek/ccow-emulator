@@ -118,10 +118,10 @@ begin
 
   {$IFDEF DEBUG}
   currentContext := CreateContext(CreateParticipant(nil, 'test', false, false));
-  currentContext^.contextItems.Values['item1'] := 'value1';
-  currentContext^.contextItems.Values['item2'] := 'value2';
-  currentContext^.contextItems.Values['item3'] := 'value3';
-  currentContext^.contextItems.Values['item4'] := 'value4';
+  currentContext^.contextItems.Values['test.item1'] := 'value1';
+  currentContext^.contextItems.Values['test.item2'] := 'value2';
+  currentContext^.contextItems.Values['test.item3'] := 'value3';
+  currentContext^.contextItems.Values['test.item4'] := 'value4';
   sessionForm.CurrentContext := currentContext;
   {$ENDIF}
 
