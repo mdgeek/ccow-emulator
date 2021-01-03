@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ExtCtrls, Common,
-  ComCtrls;
+  ComCtrls, Logger;
 
 type
   TSessionForm = class(TForm)
@@ -26,6 +26,7 @@ type
     procedure FormCreate(Sender: TObject);
 
   private
+    FLogger: TLogger;
     procedure SetCurrentContext(context: PContext);
     procedure SetPendingContext(context: PContext);
     procedure SetContextItems(memo: TMemo; context: PContext);
@@ -36,7 +37,7 @@ type
     property PendingContext: PContext write SetPendingContext;
     procedure AddParticipant(participant: PParticipant);
     procedure RemoveParticipant(participant: PParticipant);
-
+    property Logger: TLogger read FLogger;
   end;
 
 implementation
@@ -116,9 +117,11 @@ end;
 
 procedure TSessionForm.FormCreate(Sender: TObject);
 begin
+  FLogger := TLogger.Create(memoActivityLog.Lines);
   grpCurrentContext.Width := frmMain.ClientWidth div 2;
   grpActivityLog.Width := frmMain.ClientWidth div 3 * 2;
   pnlTop.Height := frmMain.ClientHeight div 2;
+  grpActivityLog.Caption := Format('%s (%d lines maximum)', [grpActivityLog.Caption, FLogger.MaxLines]);
 end;
 
 end.

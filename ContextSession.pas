@@ -108,7 +108,7 @@ begin
   nextSessionId := nextSessionId + 1;
   sessionId := nextSessionId;
   sessionForm := frmMain.CreateSession(sessionId);
-  FLogger := TLogger.Create(sessionForm.memoActivityLog.Lines);
+  FLogger := sessionForm.Logger;
   sessionForm.OnDestroy := Self.SessionDestroy;
   FLogger.LogStart('TContextSession.Create');
   participants := TList.Create;

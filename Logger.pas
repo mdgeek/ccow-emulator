@@ -10,6 +10,7 @@ type
   private
     logger: TStrings;
     logStack: TStrings;
+    FMaxLines: Integer;
     function LogIndent: String;
   public
     constructor Create(logger: TStrings);
@@ -21,25 +22,26 @@ type
     procedure LogActivity(context: PContext; activity: String); overload;
     procedure LogStart(method: String);
     procedure LogEnd;
+    property MaxLines: Integer read FMaxLines write FMaxLines;
   end;
 
 implementation
 
 const
   LOG_INDENT = '> > > > > > > > > > > > > > > > > > > > ';
-  MAX_LINES = 250;
 
 { TLogger }
 
 constructor TLogger.Create(logger: TStrings);
 begin
+  FMaxLines := 250;
   Self.logger := logger;
   logStack := TStringList.Create;
 end;
 
 procedure TLogger.Log(text: String);
 begin
-  while logger.Count >= MAX_LINES do
+  while logger.Count >= FMaxLines do
     logger.Delete(0);
 
   logger.Add(LogIndent + text);
