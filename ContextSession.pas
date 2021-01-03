@@ -457,6 +457,8 @@ end;
 }
 function TContextSession.GetContext(contextCoupon: Integer): PContext;
 begin
+  Result := nil;
+  
   if (currentContext <> nil) and (currentContext^.contextCoupon = contextCoupon)
   then Result := currentContext
   else if (pendingContext <> nil) and (pendingContext^.contextCoupon = contextCoupon)

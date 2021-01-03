@@ -12,16 +12,16 @@ unit CCOW_TLB;
 // ************************************************************************ //
 
 // PASTLWTR : 1.2
-// File generated on 12/31/2020 7:47:53 PM from Type Library described below.
+// File generated on 1/2/2021 7:01:23 PM from Type Library described below.
 
 // ************************************************************************  //
-// Type Lib: Y:\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator.tlb (1)
+// Type Lib: \\Mac\Home\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator.tlb (1)
 // LIBID: {1D57E007-B996-4E6B-B9A4-2F62A2399CFF}
 // LCID: 0
 // Helpfile: 
 // HelpString: CCOWEmulator Library
 // DepndLst: 
-//   (1) v2.0 stdole, (C:\WINDOWS\system32\stdole2.tlb)
+//   (1) v2.0 stdole, (C:\Windows\SysWOW64\stdole2.tlb)
 // ************************************************************************ //
 {$TYPEDADDRESS OFF} // Unit must be compiled without type-checked pointers. 
 {$WARN SYMBOL_PLATFORM OFF}

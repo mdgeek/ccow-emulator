@@ -95,7 +95,7 @@ UnitOutputDir=
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
-Packages=vcl;rtl;inet;xmlrtl;vclie;inetdbbde;inetdbxpress;vclx;dbrtl;dsnap;dsnapcon;vcldb;soaprtl;VclSmp;dbexpress;dbxcds;inetdb;bdertl;vcldbx;webdsnap;websnap;adortl;ibxpress;teeui;teedb;tee;dss;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;dclOfficeXP;JamShellD7;clinetsuited7;IEDcomp;IndyProtocols70;IndyCore70;IndySystem70;clinetsuited7_D;RaizeComponentsVcl;RaizeComponentsVclDb;vcCommon20;DJcl;vcRPCB_R70;vcControls;vcActiveForms;rbTDBC77;rbRCL77;rbCIDE77;rbIDE77;rbBDE77;rbDIDE77;rbDAD77;rbUSER77;rbDBDE77;rbDB77;rbADO77;rbDBE77;rbIBE77;EmbeddedWebBrowser_D7;vcImaging70;BEHCPRS20;vcFMDC;vcFMDS
+Packages=vcl;rtl;inet;xmlrtl;vclie;vclx;dbrtl;dsnap;dsnapcon;vcldb;dclIndyCore70;IndyCore70;IndySystem70;vclactnband;IndyProtocols70
 Conditionals=
 DebugSourceDirs=
 UsePackages=0
@@ -105,6 +105,10 @@ HostApplication=
 Launcher=
 UseLauncher=0
 DebugCWD=
+[Language]
+ActiveLang=
+ProjectLang=
+RootDir=
 [Version Info]
 IncludeVerInfo=1
 AutoIncBuild=0
@@ -130,8 +134,6 @@ OriginalFilename=
 ProductName=CCOW Emulator
 ProductVersion=1.0.0.0
 Comments=
-[Excluded Packages]
-c:\program files\borland\delphi7\Projects\Bpl\IEDcomp.bpl=Internet EDiting components
 [HistoryLists\hlConditionals]
 Count=1
 Item0=DEBUG

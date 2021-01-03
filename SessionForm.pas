@@ -3,7 +3,8 @@ unit SessionForm;
 interface
 
 uses
-  SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ExtCtrls, Common;
+  SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ExtCtrls, Common,
+  ComCtrls;
 
 type
   TSessionForm = class(TForm)
@@ -11,7 +12,6 @@ type
     grpCurrentContext: TGroupBox;
     grpParticipants: TGroupBox;
     grpPendingContext: TGroupBox;
-    lbParticipants: TListBox;
     memoActivityLog: TMemo;
     memoCurrentContext: TMemo;
     memoPendingContext: TMemo;
@@ -20,6 +20,7 @@ type
     splitterBottom: TSplitter;
     splitterMain: TSplitter;
     splitterTop: TSplitter;
+    lvParticipants: TListView;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
@@ -45,20 +46,33 @@ uses MainForm;
 {$R *.dfm}
 
 procedure TSessionForm.AddParticipant(participant: PParticipant);
+var
+  survey: String;
+  suspended: String;
+  s: String;
+  item: TListItem;
 begin
   RemoveParticipant(participant);
-  lbParticipants.AddItem(IntToStr(participant^.participantCoupon)
-    + #9 + participant^.title, TObject(participant));
+  item := lvParticipants.Items.Add;
+  item.Data := participant;
+  item.Caption := IntToStr(participant^.participantCoupon);
+  item.SubItems.Add(participant^.title);
+  item.SubItems.Add(BoolToYN(participant^.survey));
+  item.SubItems.Add(BoolToYN(participant^.suspended));
 end;
 
 procedure TSessionForm.RemoveParticipant(participant: PParticipant);
 var
   i: Integer;
 begin
-  i := lbParticipants.Items.IndexOfObject(TObject(participant));
-
-  if i >= 0
-  then lbParticipants.Items.Delete(i);
+  for i := 0 to lvParticipants.Items.Count - 1 do
+  begin
+    if PParticipant(lvParticipants.Items[i].Data)^.participantCoupon = participant.participantCoupon
+    then begin
+      lvParticipants.Items.Delete(i);
+      break;
+    end;
+  end;
 end;
 
 procedure TSessionForm.SetCurrentContext(context: PContext);
@@ -96,7 +110,7 @@ end;
 
 procedure TSessionForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  if lbParticipants.Items.Count > 0
+  if lvParticipants.Items.Count > 0
   then begin
     if MessageDlg('Closing this tab will terminate all active participants.  Are you sure?', mtWarning, [mbYes, mbCancel], 0) = mrCancel
     then CanClose := False;

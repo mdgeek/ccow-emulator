@@ -36,6 +36,7 @@ type
     RawText);         // The raw text value for the item.
 
   procedure Assert(condition: Boolean; text: String; params: array of const);
+  function BoolToYN(value: Boolean): String;
   function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
   function FromVarArray(varArray: OleVariant): TStrings;
   function IndexOfName(name: String; list: TStrings): Integer;
@@ -61,6 +62,13 @@ procedure Assert(condition: Boolean; text: String; params: array of const);
 begin
   if Not(condition)
   then raise Exception.CreateFmt(text, params);
+end;
+
+function BoolToYN(value: Boolean): String;
+begin
+  if value
+  then Result := 'yes'
+  else Result := 'no';
 end;
 
 {
