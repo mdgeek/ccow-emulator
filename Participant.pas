@@ -97,7 +97,7 @@ begin
 
   fullUrl := Format('%s?interface=ContextParticipant&method=%s&%s',
     [url, method, encodeForm(params)]);
-  Result := DecodeForm(client.Get(fullUrl));
+  Result := DecodeForm(''); // DecodeForm(client.Get(fullUrl));
 end;
 
 end.

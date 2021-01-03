@@ -27,6 +27,7 @@ implementation
 
 const
   LOG_INDENT = '> > > > > > > > > > > > > > > > > > > > ';
+  MAX_LINES = 250;
 
 { TLogger }
 
@@ -38,6 +39,9 @@ end;
 
 procedure TLogger.Log(text: String);
 begin
+  while logger.Count >= MAX_LINES do
+    logger.Delete(0);
+
   logger.Add(LogIndent + text);
 end;
 

@@ -47,9 +47,6 @@ uses MainForm;
 
 procedure TSessionForm.AddParticipant(participant: PParticipant);
 var
-  survey: String;
-  suspended: String;
-  s: String;
   item: TListItem;
 begin
   RemoveParticipant(participant);

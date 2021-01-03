@@ -204,6 +204,7 @@ var
 begin
   participant := FindParticipant(participantCoupon);
   participant^.suspended := suspend;
+  sessionForm.AddParticipant(participant);
 end;
 
 {

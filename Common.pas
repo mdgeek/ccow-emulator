@@ -37,6 +37,8 @@ type
 
   procedure Assert(condition: Boolean; text: String; params: array of const);
   function BoolToYN(value: Boolean): String;
+  function ToDelimitedStr(list: TStrings; delimiter: Char): String;
+  function FromDelimitedStr(value: String; delimiter: Char): TStrings;
   function ToVarArray(items: TStrings; which: TListComponent): OleVariant;
   function FromVarArray(varArray: OleVariant): TStrings;
   function IndexOfName(name: String; list: TStrings): Integer;
@@ -69,6 +71,21 @@ begin
   if value
   then Result := 'yes'
   else Result := 'no';
+end;
+
+function ToDelimitedStr(list: TStrings; delimiter: Char): String;
+begin
+  list.Delimiter := delimiter;
+  list.QuoteChar := #1;
+  Result := StringReplace(list.DelimitedText, #1, '', [rfReplaceAll]);
+end;
+
+function FromDelimitedStr(value: String; delimiter: Char): TStrings;
+begin
+  Result := TStringList.Create;
+  Result.Delimiter := delimiter;
+  Result.QuoteChar := #1;
+  Result.DelimitedText := value;
 end;
 
 {
@@ -178,9 +195,7 @@ end;
 }
 function SerializeArray(list: TStrings): String; overload;
 begin
-  list.Delimiter := '|';
-  list.QuoteChar := #0;
-  Result := list.DelimitedText;
+  Result := ToDelimitedStr(list, '|');
 end;
 
 {
@@ -230,13 +245,10 @@ begin
   if form = nil
   then Result := ''
   else begin
-    form.Delimiter := '&';
-    form.QuoteChar := #0;
-
     for i := 0 to form.Count - 1 do
       form.ValueFromIndex[i] := EncodeParameter(form.ValueFromIndex[i]);
 
-    Result := form.DelimitedText;
+    Result := ToDelimitedStr(form, '&');
   end;
 end;
 
@@ -245,12 +257,7 @@ end;
 }
 function DecodeForm(form: String): TStrings;
 begin
-  Result := TStringList.Create;
-  Result.Delimiter := '&';
-  Result.QuoteChar := #0;
-
-  if form <> ''
-  then Result.DelimitedText := form;
+  Result := FromDelimitedStr(form, '&');
 end;
 
 end.

@@ -151,10 +151,7 @@ end;
 
 function TRequest.getParamList(name: String): TStrings;
 begin
-  Result := TStringList.Create;
-  Result.Delimiter := '|';
-  Result.QuoteChar := #0;
-  Result.DelimitedText := GetParamStr(name);
+  Result := FromDelimitedStr(GetParamStr(name), '|');
 end;
 
 function TRequest.GetParamArray(name: String): Variant;
