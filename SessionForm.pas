@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ExtCtrls, Common,
-  ComCtrls, Logger;
+  ComCtrls, Logger, UITypes;
 
 type
   TSessionForm = class(TForm)

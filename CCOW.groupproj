@@ -1,0 +1,36 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{063F84A8-637E-4124-A895-0E9D9D60A4AA}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="CCOWEmulator.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="CCOWEmulator">
+        <MSBuild Projects="CCOWEmulator.dproj"/>
+    </Target>
+    <Target Name="CCOWEmulator:Clean">
+        <MSBuild Projects="CCOWEmulator.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="CCOWEmulator:Make">
+        <MSBuild Projects="CCOWEmulator.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="CCOWEmulator"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="CCOWEmulator:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="CCOWEmulator:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

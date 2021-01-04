@@ -76,15 +76,15 @@ end;
 function ToDelimitedStr(list: TStrings; delimiter: Char): String;
 begin
   list.Delimiter := delimiter;
-  list.QuoteChar := #1;
-  Result := StringReplace(list.DelimitedText, #1, '', [rfReplaceAll]);
+  list.QuoteChar := #0;
+  Result := list.DelimitedText;
 end;
 
 function FromDelimitedStr(value: String; delimiter: Char): TStrings;
 begin
   Result := TStringList.Create;
   Result.Delimiter := delimiter;
-  Result.QuoteChar := #1;
+  Result.QuoteChar := #0;
   Result.DelimitedText := value;
 end;
 

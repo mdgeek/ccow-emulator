@@ -4,7 +4,7 @@ interface
 
 uses
   CCOW_TLB, Classes, SysUtils, StrUtils, Variants, SessionForm,
-  Common, ContextException, Logger;
+  Common, ContextException, Logger, Types;
 
 type
   {
@@ -116,7 +116,7 @@ begin
   currentContext := nil;
   pendingContext := nil;
 
-  {$IFDEF DEBUG}
+  {$IFDEF TEST}
   currentContext := CreateContext(CreateParticipant(nil, 'test', false, false));
   currentContext^.contextItems.Values['test.item1'] := 'value1';
   currentContext^.contextItems.Values['test.item2'] := 'value2';
