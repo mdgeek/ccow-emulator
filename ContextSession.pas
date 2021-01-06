@@ -117,7 +117,7 @@ begin
   pendingContext := nil;
 
   {$IFDEF TEST}
-  currentContext := CreateContext(CreateParticipant(nil, 'test', false, false));
+  currentContext := CreateContext(CreateParticipant(Participant.Create('test'), 'test', false, false));
   currentContext^.contextItems.Values['test.item1'] := 'value1';
   currentContext^.contextItems.Values['test.item2'] := 'value2';
   currentContext^.contextItems.Values['test.item3'] := 'value3';
