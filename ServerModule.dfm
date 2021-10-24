@@ -2,8 +2,6 @@ object RestServer: TRestServer
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
-  Left = 634
-  Top = 302
   Height = 255
   Width = 455
   object httpServer: TIdHTTPServer

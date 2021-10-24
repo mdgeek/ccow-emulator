@@ -11,7 +11,7 @@ type
     Used for web participants.  Doesn't do anything at the moment.  With
     a websocket implementation, could be made fully functional.
   }
-  TParticipant = class(TAutoObject, IContextParticipant)
+  TWebParticipant = class(TAutoObject, IContextParticipant)
   private
     url: String;
   public
@@ -28,30 +28,30 @@ implementation
 uses
   Common;
 
-constructor TParticipant.Create(url: String);
+constructor TWebParticipant.Create(url: String);
 begin
   Self.url := url;
 end;
 
-function TParticipant.ContextChangesPending(contextCoupon: Integer; var reason: WideString): WideString;
+function TWebParticipant.ContextChangesPending(contextCoupon: Integer; var reason: WideString): WideString;
 begin
   reason := '';
   Result := '';
 end;
 
-procedure TParticipant.ContextChangesAccepted(contextCoupon: Integer);
+procedure TWebParticipant.ContextChangesAccepted(contextCoupon: Integer);
 begin
 end;
 
-procedure TParticipant.ContextChangesCanceled(contextCoupon: Integer);
+procedure TWebParticipant.ContextChangesCanceled(contextCoupon: Integer);
 begin
 end;
 
-procedure TParticipant.CommonContextTerminated;
+procedure TWebParticipant.CommonContextTerminated;
 begin
 end;
 
-procedure TParticipant.Ping;
+procedure TWebParticipant.Ping;
 begin
 end;
 

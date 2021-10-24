@@ -370,7 +370,7 @@ var
   participantCoupon: Integer;
 begin
   applicationName := request.Param['applicationName'];
-  contextParticipant := TParticipant.Create(request.Param['contextParticipant']);
+  contextParticipant := TWebParticipant.Create(request.Param['contextParticipant']);
   survey := request.ParamBool['survey'];
   wait := request.ParamBool['wait'];
   participantCoupon := contextManager.IContextManager_JoinCommonContext(contextParticipant, applicationName, survey, wait);
