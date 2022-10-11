@@ -1,4 +1,4 @@
-unit CCOW_TLB;
+unit CCOWEmulator_TLB;
 
 // ************************************************************************ //
 // WARNING
@@ -12,7 +12,7 @@ unit CCOW_TLB;
 // ************************************************************************ //
 
 // $Rev: 98336 $
-// File generated on 10/4/2022 7:27:46 AM from Type Library described below.
+// File generated on 10/4/2022 1:45:04 PM from Type Library described below.
 
 // ************************************************************************  //
 // Type Lib: Y:\workspace\ccow-emulator\CCOWEmulator\CCOWEmulator (1)
@@ -44,10 +44,10 @@ uses Winapi.Windows, System.Classes, System.Variants, System.Win.StdVCL, Vcl.Gra
 // *********************************************************************//
 const
   // TypeLibrary Major and minor versions
-  CCOWMajorVersion = 1;
-  CCOWMinorVersion = 0;
+  CCOWEmulatorMajorVersion = 1;
+  CCOWEmulatorMinorVersion = 0;
 
-  LIBID_CCOW: TGUID = '{1D57E007-B996-4E6B-B9A4-2F62A2399CFF}';
+  LIBID_CCOWEmulator: TGUID = '{1D57E007-B996-4E6B-B9A4-2F62A2399CFF}';
 
   IID_IContextManager: TGUID = '{41126C5E-A069-11D0-808F-00A0240943E4}';
   IID_IContextData: TGUID = '{2AAE4991-A1FC-11D0-808F-00A0240943E4}';

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE xliff PUBLIC "-//XLIFF//DTD XLIFF//EN" "http://www.oasis-open.org/committees/xliff/documents/xliff.dtd">
+<xliff version="1.0">
+  <file original="Y:\workspace\ccow-emulator\CCOWEmulator\ServerModule.dfm" source-language="en-US" target-language="en-US" datatype="delphiform" tool="ETM v10.0" ts="Y:\workspace\ccow-emulator\CCOWEmulator\ServerModule.dfm">
+    <header>
+      <prop-group name="ITEHeaderProp">
+        <prop prop-type="Version">9.0</prop>
+        <prop prop-type="SelfDateTime">44838.3159259259</prop>
+        <prop prop-type="OrigDateTime">44203.3766435185</prop>
+        <prop prop-type="XlatDateTime">44203.3766435185</prop>
+        <prop prop-type="Translated">0</prop>
+        <prop prop-type="UnTranslated">12</prop>
+      </prop-group>
+    </header>
+    <body>
+      <trans-unit id="O:RestServer.OldCreateOrder" resname="O:RestServer.OldCreateOrder">
+        <source>False</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">0</prop><prop prop-type="Type">TRestServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.OnCreate" resname="O:RestServer.OnCreate">
+        <source>DataModuleCreate</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">1</prop><prop prop-type="Type">TRestServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.OnDestroy" resname="O:RestServer.OnDestroy">
+        <source>DataModuleDestroy</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">2</prop><prop prop-type="Type">TRestServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.Height" resname="O:RestServer.Height">
+        <source>255</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">3</prop><prop prop-type="Type">TRestServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.Width" resname="O:RestServer.Width">
+        <source>455</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">4</prop><prop prop-type="Type">TRestServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.Bindings[0].IP" resname="O:RestServer.O:httpServer.Bindings[0].IP">
+        <source>'127.0.0.1'</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">5</prop><prop prop-type="Type">C:TIdHTTPServer</prop><prop prop-type="Localize">1</prop><prop prop-type="Open">&lt;item</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.Bindings[0].Port" resname="O:RestServer.O:httpServer.Bindings[0].Port">
+        <source>2116</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">6</prop><prop prop-type="Type">C:TIdHTTPServer</prop><prop prop-type="Localize">1</prop><prop prop-type="Close">end&gt;</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.DefaultPort" resname="O:RestServer.O:httpServer.DefaultPort">
+        <source>2116</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">7</prop><prop prop-type="Type">TIdHTTPServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.OnAfterBind" resname="O:RestServer.O:httpServer.OnAfterBind">
+        <source>httpServerAfterBind</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">8</prop><prop prop-type="Type">TIdHTTPServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.OnCommandGet" resname="O:RestServer.O:httpServer.OnCommandGet">
+        <source>httpServerCommandGet</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">9</prop><prop prop-type="Type">TIdHTTPServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.Left" resname="O:RestServer.O:httpServer.Left">
+        <source>208</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">10</prop><prop prop-type="Type">TIdHTTPServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+      <trans-unit id="O:RestServer.O:httpServer.Top" resname="O:RestServer.O:httpServer.Top">
+        <source>96</source>
+        <prop-group name="ITEFieldProp">
+        <prop prop-type="Created">44838.3159332407</prop><prop prop-type="Status">0</prop><prop prop-type="Order">11</prop><prop prop-type="Type">TIdHTTPServer</prop><prop prop-type="Localize">1</prop></prop-group>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

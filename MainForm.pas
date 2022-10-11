@@ -9,10 +9,8 @@ uses
 type
   TfrmMain = class(TForm)
     pages: TPageControl;
-    procedure FormCreate(Sender: TObject);
   public
     function CreateSession(sessionId: Integer): TSessionForm;
-    procedure OnLastRelease(var Shutdown: Boolean);
   end;
 
 var
@@ -40,16 +38,6 @@ begin
   sessionForm.Show;
   Result := sessionForm;
   pages.ActivePage := tab;
-end;
-
-procedure TfrmMain.FormCreate(Sender: TObject);
-begin
-  ComServer.OnLastRelease := OnLastRelease;
-end;
-
-procedure TfrmMain.OnLastRelease(var Shutdown: Boolean);
-begin
-  Shutdown := False;
 end;
 
 end.

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+  <PersonalityInfo>
+    <Option>
+      <Option Name="Personality">W32ResourceDLL.Personality</Option>
+      <Option Name="ProjectType">ResourceDLL</Option>
+      <Option Name="Version">1.0</Option>
+      <Option Name="GUID">{752D2F52-1F23-4B40-B9C7-8EB79DB01FEB}</Option>
+    </Option>
+  </PersonalityInfo>
+  <W32ResourceDLL.Personality>
+    <Source>
+      <Source Name="MainSource">CCOWEmulator.dpr</Source>
+    </Source>
+    <Options>
+      <Options Name="BaseLang">1033</Options>
+      <Options Name="TargetName">..\CCOWEmulator.ENU</Options>
+      <Options Name="BRCC_IncludePath"></Options>
+      <Options Name="Company"></Options>
+      <Options Name="Configuration"></Options>
+      <Options Name="Copyright"></Options>
+      <Options Name="Description"></Options>
+      <Options Name="Trademark"></Options>
+      <Options Name="Product"></Options>
+      <Options Name="ProductVersion"></Options>
+      <Options Name="Title"></Options>
+      <Options Name="FileVersion"></Options>
+      <Options Name="Evidence"></Options>
+      <Options Name="KeyFile"></Options>
+      <Options Name="KeyName"></Options>
+    </Options>
+    <FileList>
+      <File FileName="MainForm.dfm" ContainerId="W32Form" ModuleName="MainForm.dfm"/>
+      <File FileName="ServerModule.dfm" ContainerId="W32Form" ModuleName="ServerModule.dfm"/>
+      <File FileName="SessionForm.dfm" ContainerId="W32Form" ModuleName="SessionForm.dfm"/>
+      <File FileName="CCOWEmulator_DRC.rc" ContainerId="W32RC" ModuleName="CCOWEmulator_DRC.rc"/>
+    </FileList>
+  </W32ResourceDLL.Personality>
+</BorlandProject>
